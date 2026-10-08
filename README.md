@@ -7,6 +7,9 @@ Turbo on the Neural Engine, via WhisperKit). Nothing is sent anywhere.
 Rebuilt in October 2026 from the July "Bolt" version, with a Material 3 (Google-style)
 interface set in Google Sans Flex.
 
+**Setting it up on your Mac?** Open this folder in Claude Code (or any coding agent) and
+say "set up Murmur for me". [`AGENTS.md`](AGENTS.md) walks the agent through installing it.
+
 ## Using it
 
 | Do this | To |
