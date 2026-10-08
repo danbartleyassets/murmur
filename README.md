@@ -24,7 +24,7 @@ menu bar; the window opens from there, or by opening the app again.
 
 - Apple Silicon Mac, macOS 26 or newer
 - Swift 6.2 toolchain (Xcode or the Command Line Tools) to build
-- About 2 GB of disk: build cache plus the ~600 MB model, downloaded on first launch
+- About 3 GB of disk: build cache plus the 1.4 GB model, downloaded on first launch
 
 ## Build and install
 
@@ -68,6 +68,9 @@ MURMUR_RENDER=/tmp/murmur-render .build/debug/Murmur
   audio is discarded. Any other key during a sequence resets it, so typing capitals with
   Shift can't trigger a recording.
 - `TextTools.swift`: voice commands, corrections, smart spacing, Whisper clean-up.
+- `SoundsLike.swift`: vocabulary. Distil-Whisper ignores prompt tokens (tested), so near-misses
+  are corrected after transcription: same consonant skeleton and ≥70% similar spelling once
+  sounds are normalised ("acupinol" → Acupanel, "Casero" → Kasaro, but not "kisser").
 
 `Sources/Murmur` is the app:
 
@@ -77,7 +80,7 @@ MURMUR_RENDER=/tmp/murmur-render .build/debug/Murmur
 | `KeyMonitor.swift` | Core Graphics event tap; swallows Esc only while recording |
 | `AudioRecorder.swift` | 16 kHz capture, chunking at pauses (30–60 s), level meter, mic selection, survives device changes |
 | `AudioDevices.swift` | Core Audio input list |
-| `Transcriber.swift` | Model download with progress, Neural Engine load, warm-up, vocabulary prompting |
+| `Transcriber.swift` | Model download with progress, Neural Engine load, warm-up |
 | `TextInserter.swift` | Paste with full clipboard restore, typing fallback, Accessibility context |
 | `HUD.swift` | The floating pill |
 | `MainWindow.swift` | The window: Home, General, Dictation, Vocabulary, Ask AI |

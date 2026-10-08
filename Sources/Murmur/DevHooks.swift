@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import MurmurCore
 
 /// Development hooks, driven by environment variables when launching the binary
 /// directly. Not reachable from the normal app.
@@ -38,7 +39,8 @@ enum DevHooks {
             }
             let loadSeconds = Date().timeIntervalSince(started)
             let t0 = Date()
-            let text = await transcriber.transcribe(file: file, language: "en", vocabulary: vocabulary)
+            let raw = await transcriber.transcribe(file: file, language: "en")
+            let text = SoundsLike.correct(raw, terms: vocabulary)
             let report = """
             load_seconds: \(String(format: "%.1f", loadSeconds))
             transcribe_seconds: \(String(format: "%.2f", Date().timeIntervalSince(t0)))

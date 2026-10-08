@@ -290,7 +290,7 @@ private struct ModelStep: View {
                 case .idle:
                     detail("Starting…")
                 case .downloading(let f):
-                    detail("Downloading Distil-Whisper — \(Int(f * 100))%. First run only.")
+                    detail("Downloading Distil-Whisper (1.4 GB) — \(Int(f * 100))%. First run only.")
                     LinearProgress(value: f).frame(maxWidth: 320)
                 case .preparing(let first):
                     detail(first ? "Optimising for this Mac's Neural Engine. One-time, about 2 minutes."
@@ -639,7 +639,7 @@ private struct VocabularyPage: View {
 
             Card {
                 SectionTitle(text: "Words to recognise").padding(.bottom, 4)
-                Text("Names, brands and jargon — like Acupanel, Kasaro or WVH.")
+                Text("Names, brands and jargon. Near-misses are fixed automatically — “acupinol” becomes Acupanel, “Casero” becomes Kasaro.")
                     .font(GoogleSans.bodySmall).foregroundStyle(M3.onSurfaceVariant).padding(.bottom, 14)
                 HStack(spacing: 10) {
                     M3TextField(placeholder: "Add a word", text: $newTerm, onSubmit: addTerm)
@@ -658,7 +658,7 @@ private struct VocabularyPage: View {
 
             Card {
                 SectionTitle(text: "Corrections").padding(.bottom, 4)
-                Text("Always swap a word Murmur keeps getting wrong for the right one.")
+                Text("For anything that still comes out wrong, swap it for the right word every time.")
                     .font(GoogleSans.bodySmall).foregroundStyle(M3.onSurfaceVariant).padding(.bottom, 14)
                 HStack(spacing: 10) {
                     M3TextField(placeholder: "Heard as", text: $wrong, onSubmit: addCorrection)

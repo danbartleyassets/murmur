@@ -96,5 +96,20 @@ check(NonSpeech.strip("[BLANK_AUDIO] Hello (upbeat music) there") == "Hello ther
 check(Hallucination.isLikely("Thank you.", voicedSeconds: 0.1), "silent 'Thank you.' is dropped")
 check(!Hallucination.isLikely("Thank you.", voicedSeconds: 0.7), "spoken 'Thank you.' is kept")
 
+print("Sounds like")
+let terms = ["Acupanel", "Kasaro", "Mulgrave", "WVH"]
+check(SoundsLike.correct("the acupinol container", terms: terms) == "the Acupanel container", "acupinol -> Acupanel")
+check(SoundsLike.correct("move the Casero call.", terms: terms) == "move the Kasaro call.", "Casero -> Kasaro, keeps punctuation")
+check(SoundsLike.correct("the Acu panel range", terms: terms) == "the Acupanel range", "split word joined")
+check(SoundsLike.correct("Acu-panel", terms: terms) == "Acupanel", "hyphenated split joined")
+check(SoundsLike.correct("a kisser", terms: terms) == "a kisser", "kisser is not Kasaro")
+check(SoundsLike.correct("the panel", terms: terms) == "the panel", "panel alone is untouched")
+check(SoundsLike.correct("cursor and caesar", terms: terms) == "cursor and caesar", "unrelated words untouched")
+check(SoundsLike.correct("ask wvh about it", terms: terms) == "ask WVH about it", "exact match gets the right case")
+check(SoundsLike.correct("at mulgrave on the 9th", terms: terms) == "at Mulgrave on the 9th", "recases exact words")
+check(SoundsLike.correct("Hi Jack, the acupinol container should arrive at Mulgrave on the 9th. Can we move the Casero call?", terms: terms)
+      == "Hi Jack, the Acupanel container should arrive at Mulgrave on the 9th. Can we move the Kasaro call?", "full sentence from the engine test")
+check(SoundsLike.correct("nothing to fix here", terms: []) == "nothing to fix here", "no terms, no change")
+
 print(failures == 0 ? "\nAll checks passed." : "\n\(failures) check(s) failed.")
 exit(failures == 0 ? 0 : 1)

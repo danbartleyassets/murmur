@@ -191,8 +191,13 @@ struct HUDView: View {
         }
     }
 
+    private var hintKey: TriggerKey {
+        if case .recording(.ask, _, _) = model.content { return settings.askTrigger }
+        return settings.trigger
+    }
+
     private var hint: some View {
-        Text("Tap \(settings.trigger.symbol) to finish   ·   esc to cancel")
+        Text("Tap \(hintKey.symbol) to finish   ·   esc to cancel")
             .font(GoogleSans.font(12, 500))
             .foregroundStyle(Color(hex: 0xE3E3E3).opacity(0.85))
             .padding(.horizontal, 12)

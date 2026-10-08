@@ -88,15 +88,10 @@ final class Transcriber {
         }
     }
 
-    /// Transcribes 16 kHz mono samples. `vocabulary` nudges spelling of names and jargon.
-    func transcribe(_ samples: [Float], language: String?, vocabulary: [String]) async -> String {
+    /// Transcribes 16 kHz mono samples. (Vocabulary is applied afterwards by
+    /// `SoundsLike`: Distil-Whisper ignores prompt tokens, tested 2026-10-08.)
+    func transcribe(_ samples: [Float], language: String?) async -> String {
         guard let kit, !samples.isEmpty else { return "" }
-
-        var prompt: [Int]?
-        if !vocabulary.isEmpty, let tokenizer = kit.tokenizer {
-            let text = " " + vocabulary.joined(separator: ", ") + "."
-            prompt = tokenizer.encode(text: text).filter { $0 < tokenizer.specialTokens.specialTokenBegin }
-        }
         let options = DecodingOptions(
             task: .transcribe,
             language: language,
@@ -104,7 +99,6 @@ final class Transcriber {
             detectLanguage: language == nil,
             skipSpecialTokens: true,
             withoutTimestamps: true,
-            promptTokens: prompt,
             suppressBlank: true,
             // Whisper's window is 30 s; past that, split at silences instead of mid-word.
             chunkingStrategy: samples.count > 16_000 * 30 ? .vad : ChunkingStrategy.none
@@ -119,8 +113,8 @@ final class Transcriber {
     }
 
     /// Transcribes a file (used by the self-test hook).
-    func transcribe(file path: String, language: String?, vocabulary: [String] = []) async -> String {
+    func transcribe(file path: String, language: String?) async -> String {
         guard let samples = try? AudioProcessor.loadAudioAsFloatArray(fromPath: path) else { return "" }
-        return await transcribe(samples, language: language, vocabulary: vocabulary)
+        return await transcribe(samples, language: language)
     }
 }

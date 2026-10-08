@@ -148,14 +148,13 @@ final class AppState: ObservableObject {
         }
 
         let language = settings.resolvedLanguage
-        let vocabulary = VocabularyStore.shared.terms
         let (chunks, continuation) = AsyncStream<[Float]>.makeStream()
         stream = continuation
         streamTask = Task { [transcriber] in
             var parts: [String] = []
             for await chunk in chunks {
                 guard chunk.count >= 16_000 / 4 else { continue }
-                let text = await transcriber.transcribe(chunk, language: language, vocabulary: vocabulary)
+                let text = await transcriber.transcribe(chunk, language: language)
                 if !text.isEmpty { parts.append(text) }
             }
             return parts.joined(separator: " ")
@@ -259,7 +258,8 @@ final class AppState: ObservableObject {
             return
         }
 
-        let corrected = Replacements.apply(VocabularyStore.shared.corrections, to: raw)
+        let vocab = VocabularyStore.shared
+        let corrected = SoundsLike.correct(Replacements.apply(vocab.corrections, to: raw), terms: vocab.terms)
         var text: String
         if mode == .ask {
             phase = .thinking

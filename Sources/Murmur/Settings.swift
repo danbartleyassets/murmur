@@ -46,7 +46,9 @@ struct SpeechModel: Identifiable {
 
     static let all: [SpeechModel] = [
         SpeechModel(id: "distil-whisper_distil-large-v3_turbo",
-                    name: "Distil Large v3 Turbo", detail: "Fast and accurate, English. About 600 MB."),
+                    name: "Distil Large v3 Turbo", detail: "Fast and accurate, English. 1.4 GB download."),
+        SpeechModel(id: "distil-whisper_distil-large-v3_turbo_600MB",
+                    name: "Distil Large v3 Turbo, compressed", detail: "Same model, smaller download (600 MB), slightly less accurate."),
         SpeechModel(id: "openai_whisper-large-v3-v20240930_turbo_632MB",
                     name: "Large v3 Turbo, compressed", detail: "Multilingual. About 630 MB."),
         SpeechModel(id: "openai_whisper-large-v3_turbo",

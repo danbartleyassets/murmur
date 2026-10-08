@@ -5,6 +5,7 @@ import AppKit
 struct MurmurApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var state = AppState.shared
+    @StateObject private var settings = SettingsStore.shared
 
     var body: some Scene {
         MenuBarExtra {
@@ -26,7 +27,7 @@ struct MurmurApp: App {
         switch state.phase {
         case .listening: return state.locked ? "lock.fill" : "mic.fill"
         case .transcribing, .thinking: return "ellipsis"
-        case .idle: return SettingsStore.shared.enabled ? "waveform" : "pause.fill"
+        case .idle: return settings.enabled ? "waveform" : "pause.fill"
         }
     }
 }
