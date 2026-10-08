@@ -62,6 +62,7 @@ private struct MenuBarMenu: View {
         case .idle: return "Starting…"
         case .ready:
             if !state.micGranted || !state.accessibilityGranted { return "Finish setup in Murmur" }
+            if state.inputDeviceName == nil { return "No microphone connected" }
             if !settings.enabled { return "Paused" }
             return "Ready — double-tap \(settings.trigger.symbol) and hold"
         }

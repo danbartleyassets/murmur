@@ -73,6 +73,8 @@ if [ "${1:-}" = "--install" ]; then
   sleep 0.5
   rm -rf "/Applications/${APP_NAME}.app"
   cp -R "${APP}" "/Applications/${APP_NAME}.app"
+  # Leave only the installed copy, so Spotlight can't open a stale build.
+  rm -rf "${APP}"
   open "/Applications/${APP_NAME}.app"
   echo "   launched"
 fi

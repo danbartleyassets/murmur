@@ -158,6 +158,8 @@ struct OverallStatus: View {
         default:
             if !state.micGranted || !state.accessibilityGranted {
                 StatusChip(text: "Setup needed", tone: .warning)
+            } else if state.inputDeviceName == nil {
+                StatusChip(text: "No microphone", tone: .warning)
             } else if !settings.enabled {
                 StatusChip(text: "Paused", tone: .neutral)
             } else {
@@ -194,6 +196,7 @@ private struct HomePage: View {
 
     private var headline: String {
         if state.setupComplete { return settings.enabled ? "Ready when you are" : "Dictation is paused" }
+        if state.micGranted && state.accessibilityGranted && state.inputDeviceName == nil { return "Connect a microphone" }
         if state.micGranted && state.accessibilityGranted { return "Almost there" }
         return "Let's get you set up"
     }
@@ -218,9 +221,12 @@ private struct SetupCard: View {
     var body: some View {
         Card {
             SectionTitle(text: "Setup").padding(.bottom, 6)
-            SetupStep(number: 1, done: state.micGranted, title: "Allow the microphone",
-                      detail: state.micGranted ? micName : "So Murmur can hear you.") {
-                Button("Allow") { state.requestMicrophone() }.buttonStyle(FilledButtonStyle())
+            SetupStep(number: 1, done: state.micGranted && state.inputDeviceName != nil,
+                      title: state.micGranted ? "Connect a microphone" : "Allow the microphone",
+                      detail: micDetail) {
+                if !state.micGranted {
+                    Button("Allow") { state.requestMicrophone() }.buttonStyle(FilledButtonStyle())
+                }
             }
             RowDivider(inset: 48)
             SetupStep(number: 2, done: state.accessibilityGranted, title: "Allow Accessibility",
@@ -234,9 +240,10 @@ private struct SetupCard: View {
         }
     }
 
-    private var micName: String {
-        if let device = AudioDevices.resolve(uid: SettingsStore.shared.inputDeviceUID) { return "Using \(device.name)." }
-        return "No microphone connected yet — plug one in or pair AirPods."
+    private var micDetail: String {
+        if !state.micGranted { return "So Murmur can hear you." }
+        if let name = state.inputDeviceName { return "Using \(name)." }
+        return "Access is allowed, but no microphone is connected. This Mac has none built in — connect AirPods, a headset, a USB mic or a webcam with a mic, or use your iPhone."
     }
 }
 
@@ -521,9 +528,16 @@ private struct GeneralPage: View {
 
             Card(padding: 8) {
                 VStack(spacing: 0) {
-                    ListRow(symbol: "mic", title: "Microphone access",
-                            detail: state.micGranted ? "Allowed" : "Needed to hear you.") {
-                        permissionTrailing(granted: state.micGranted) { state.requestMicrophone() }
+                    ListRow(symbol: "mic", title: "Microphone",
+                            detail: !state.micGranted ? "Access needed to hear you."
+                                : (state.inputDeviceName.map { "Allowed · using \($0)" } ?? "Allowed · no microphone connected")) {
+                        if !state.micGranted {
+                            Button("Allow") { state.requestMicrophone() }.buttonStyle(FilledButtonStyle())
+                        } else if state.inputDeviceName == nil {
+                            StatusChip(text: "None connected", tone: .warning)
+                        } else {
+                            StatusChip(text: "Ready", tone: .good)
+                        }
                     }
                     RowDivider(inset: 64)
                     ListRow(symbol: "accessibility", title: "Accessibility",
@@ -557,7 +571,7 @@ private struct DictationPage: View {
 
     private var micOptions: [(String, String)] {
         let systemName = AudioDevices.defaultInput()?.name
-        return [("", systemName.map { "System default (\($0))" } ?? "System default")]
+        return [("", systemName.map { "System default (\($0))" } ?? "None connected")]
             + devices.map { ($0.uid, $0.name) }
     }
 
@@ -621,6 +635,7 @@ private struct DictationPage: View {
             }
         }
         .onAppear { devices = AudioDevices.inputs() }
+        .onChange(of: state.inputDeviceName) { _, _ in devices = AudioDevices.inputs() }
     }
 
     private var modelDetail: String {

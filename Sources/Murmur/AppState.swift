@@ -17,6 +17,8 @@ final class AppState: ObservableObject {
     @Published private(set) var locked = false
     @Published private(set) var model: ModelStatus = .idle
     @Published private(set) var micGranted = false
+    /// The microphone that would be used right now, or nil if none is connected.
+    @Published private(set) var inputDeviceName: String?
     @Published private(set) var accessibilityGranted = false
     @Published private(set) var lastText = ""
     /// Which shortcut key is physically held right now (lights up the keycaps).
@@ -40,7 +42,7 @@ final class AppState: ObservableObject {
 
     private init() {}
 
-    var setupComplete: Bool { micGranted && accessibilityGranted && model.isReady }
+    var setupComplete: Bool { micGranted && inputDeviceName != nil && accessibilityGranted && model.isReady }
 
     // MARK: Lifecycle
 
@@ -79,6 +81,8 @@ final class AppState: ObservableObject {
 
     func refreshPermissions() {
         micGranted = Permissions.microphoneGranted
+        let device = AudioDevices.resolve(uid: settings.inputDeviceUID)?.name
+        if device != inputDeviceName { inputDeviceName = device }
         let ax = Permissions.accessibilityGranted
         if ax != accessibilityGranted { accessibilityGranted = ax }
         if ax, !keys.isRunning { keys.start() }
@@ -172,8 +176,8 @@ final class AppState: ObservableObject {
             Log.app.error("Recorder failed to start (no input device?)")
             continuation.finish(); stream = nil; streamTask = nil
             keys.reset()
-            hud.show(.message(symbol: "mic.slash", title: "No microphone found",
-                              detail: "Plug one in or choose another in Settings", tone: .warning), autoHide: 4)
+            hud.show(.message(symbol: "mic.slash", title: "No microphone connected",
+                              detail: "Connect AirPods, a headset or a USB mic", tone: .warning), autoHide: 4)
             return
         }
 
