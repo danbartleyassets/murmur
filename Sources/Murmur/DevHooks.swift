@@ -20,6 +20,18 @@ enum DevHooks {
                      vocabulary: env["MURMUR_SELFTEST_VOCAB"]?.split(separator: ",").map(String.init) ?? [])
             return true
         }
+        if env["MURMUR_MICTEST"] != nil {
+            let recorder = AudioRecorder()
+            print("default input:", AudioDevices.defaultInput()?.name ?? "none", "| inputs:", AudioDevices.inputs().map(\.name))
+            let ok = recorder.start(deviceUID: "")
+            print("recorder.start ->", ok)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                let r = recorder.stop()
+                print("stop -> samples \(r.samples.count), peak \(r.peak)")
+                exit(0)
+            }
+            return true
+        }
         if let dir = env["MURMUR_RENDER"] {
             render(to: URL(fileURLWithPath: dir))
             return true

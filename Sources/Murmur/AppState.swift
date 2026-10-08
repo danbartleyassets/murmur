@@ -19,6 +19,8 @@ final class AppState: ObservableObject {
     @Published private(set) var micGranted = false
     @Published private(set) var accessibilityGranted = false
     @Published private(set) var lastText = ""
+    /// Which shortcut key is physically held right now (lights up the keycaps).
+    @Published private(set) var heldKey: CaptureMode?
 
     let settings = SettingsStore.shared
     let hud = HUDController()
@@ -45,6 +47,10 @@ final class AppState: ObservableObject {
     func start() {
         keys.onAction = { [weak self] mode, action in self?.handle(action, mode: mode) }
         keys.onEscape = { [weak self] in self?.escapePressed() ?? false }
+        keys.onTriggerChange = { [weak self] mode, down in
+            guard let self else { return }
+            if down { self.heldKey = mode } else if self.heldKey == mode { self.heldKey = nil }
+        }
         applyShortcuts()
 
         // Re-apply when the shortcut settings change.
@@ -128,6 +134,7 @@ final class AppState: ObservableObject {
     // MARK: Recording
 
     private func beginRecording(_ mode: CaptureMode) {
+        Log.app.info("Start requested: enabled=\(self.settings.enabled) phase=\(String(describing: self.phase), privacy: .public) model=\(String(describing: self.model), privacy: .public) mic=\(self.micGranted)")
         guard settings.enabled, phase == .idle else { keys.reset(); return }
         guard model.isReady else {
             keys.reset()
@@ -162,6 +169,7 @@ final class AppState: ObservableObject {
         recorder.onChunk = { chunk in continuation.yield(chunk) }
 
         guard recorder.start(deviceUID: settings.inputDeviceUID) else {
+            Log.app.error("Recorder failed to start (no input device?)")
             continuation.finish(); stream = nil; streamTask = nil
             keys.reset()
             hud.show(.message(symbol: "mic.slash", title: "No microphone found",

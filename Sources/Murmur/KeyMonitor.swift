@@ -15,6 +15,8 @@ final class KeyMonitor {
     var onAction: ((CaptureMode, TapGesture.Action) -> Void)?
     /// Return true to swallow the Esc key.
     var onEscape: (() -> Bool)?
+    /// The trigger key (any mode) went down or up, for the UI.
+    var onTriggerChange: ((CaptureMode, Bool) -> Void)?
 
     private struct Binding {
         var mode: CaptureMode
@@ -105,6 +107,8 @@ final class KeyMonitor {
             let others = !current.subtracting(key).isEmpty
             if held != bindings[i].held {
                 bindings[i].held = held
+                onTriggerChange?(bindings[i].mode, held && !others)
+                Log.keys.debug("\(self.bindings[i].key.name, privacy: .public) \(held ? "down" : "up", privacy: .public) others=\(others) at \(now, format: .fixed(precision: 3))")
                 if held {
                     // Pressed while another modifier is down: a shortcut, not our gesture.
                     apply(i, others ? bindings[i].gesture.otherKey(at: now) : bindings[i].gesture.triggerDown(at: now))
@@ -119,7 +123,10 @@ final class KeyMonitor {
     }
 
     private func apply(_ index: Int, _ action: TapGesture.Action) {
-        if action != .none { onAction?(bindings[index].mode, action) }
+        if action != .none {
+            Log.keys.info("Gesture \(String(describing: self.bindings[index].mode), privacy: .public) → \(String(describing: action), privacy: .public)")
+            onAction?(bindings[index].mode, action)
+        }
         scheduleTick()
     }
 
@@ -138,7 +145,10 @@ final class KeyMonitor {
         let now = ProcessInfo.processInfo.systemUptime
         for i in bindings.indices {
             let action = bindings[i].gesture.tick(at: now)
-            if action != .none { onAction?(bindings[i].mode, action) }
+            if action != .none {
+                Log.keys.info("Gesture \(String(describing: self.bindings[i].mode), privacy: .public) → \(String(describing: action), privacy: .public) (timeout)")
+                onAction?(bindings[i].mode, action)
+            }
         }
         scheduleTick()
     }

@@ -58,8 +58,12 @@ else
   ID="-"
 fi
 echo "==> Signing (${ID})"
-codesign --force --deep --sign "${ID}" --identifier "${BUNDLE_ID}" "${APP}"
-codesign --verify --deep "${APP}" && echo "   signature OK"
+# The explicit designated requirement ties macOS permissions to the bundle ID
+# rather than to this exact build, so Accessibility survives rebuilds even
+# with ad-hoc signing.
+codesign --force --sign "${ID}" --identifier "${BUNDLE_ID}" \
+  -r="designated => identifier \"${BUNDLE_ID}\"" "${APP}"
+codesign --verify "${APP}" && echo "   signature OK"
 
 echo "==> Built ${APP}"
 

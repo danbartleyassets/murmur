@@ -488,18 +488,22 @@ struct LinearProgress: View {
 /// A keyboard key, for showing shortcuts.
 struct KeyCap: View {
     let label: String
+    var pressed = false
 
     var body: some View {
         Text(label)
             .font(GoogleSans.font(label.count > 1 ? 12 : 15, 500))
-            .foregroundStyle(M3.onSurface)
+            .foregroundStyle(pressed ? M3.onPrimary : M3.onSurface)
             .frame(minWidth: 30, minHeight: 30)
             .padding(.horizontal, label.count > 1 ? 8 : 0)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(M3.surface)
-                    .shadow(color: .black.opacity(0.10), radius: 0, x: 0, y: 1.5)
+                RoundedRectangle(cornerRadius: 8, style: .continuous).fill(pressed ? M3.primary : M3.surface)
+                    .shadow(color: .black.opacity(pressed ? 0 : 0.10), radius: 0, x: 0, y: 1.5)
             )
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(M3.outlineVariant, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(pressed ? Color.clear : M3.outlineVariant, lineWidth: 1))
+            .offset(y: pressed ? 1 : 0)
+            .animation(.easeOut(duration: 0.08), value: pressed)
     }
 }
 

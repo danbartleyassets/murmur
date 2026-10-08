@@ -91,6 +91,12 @@ final class AudioRecorder {
     // MARK: Engine
 
     private func startEngine() -> Bool {
+        // With no input device at all, touching AVAudioEngine's input node can
+        // block. Check Core Audio first.
+        guard AudioDevices.resolve(uid: deviceUID) != nil else {
+            Log.audio.error("No input device connected")
+            return false
+        }
         engine = AVAudioEngine()
         let input = engine.inputNode
         if !deviceUID.isEmpty, let id = AudioDevices.deviceID(forUID: deviceUID), let unit = input.audioUnit {

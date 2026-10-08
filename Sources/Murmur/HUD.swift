@@ -35,6 +35,7 @@ final class HUDController {
     static let size = NSSize(width: 560, height: 170)
 
     func show(_ content: HUDContent, autoHide: TimeInterval? = nil) {
+        Log.app.info("HUD show \(String(describing: content), privacy: .public)")
         hideWork?.cancel()
         if panel == nil { build() }
         if !model.visible {

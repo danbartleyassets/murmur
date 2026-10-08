@@ -317,21 +317,31 @@ private struct ModelStep: View {
 }
 
 private struct ShortcutsCard: View {
+    @EnvironmentObject private var state: AppState
     @ObservedObject private var settings = SettingsStore.shared
 
     var body: some View {
         Card {
-            SectionTitle(text: "How to use it").padding(.bottom, 8)
-            ShortcutRow(keys: [settings.trigger.symbol, settings.trigger.symbol], hold: true,
+            HStack {
+                SectionTitle(text: "How to use it")
+                Spacer()
+                Text(state.heldKey != nil ? "Key detected" : (state.accessibilityGranted ? "Press \(settings.trigger.symbol) to check" : "Needs Accessibility"))
+                    .font(GoogleSans.labelSmall)
+                    .foregroundStyle(state.heldKey != nil ? M3.primary : M3.onSurfaceVariant)
+            }
+            .padding(.bottom, 8)
+            ShortcutRow(keys: [settings.trigger.symbol, settings.trigger.symbol], hold: true, pressed: state.heldKey == .dictate,
                         title: "Hold to talk", detail: "Double-tap and keep holding. Let go to paste.")
             RowDivider(inset: 0)
             ShortcutRow(keys: [settings.trigger.symbol, settings.trigger.symbol, settings.trigger.symbol], hold: false,
+                        pressed: state.heldKey == .dictate,
                         title: "Hands-free", detail: "Triple-tap, then talk as long as you like. Tap \(settings.trigger.symbol) once to finish.")
             RowDivider(inset: 0)
             ShortcutRow(keys: ["esc"], hold: false, title: "Cancel", detail: "Throws the recording away.")
             if settings.askEnabled {
                 RowDivider(inset: 0)
                 ShortcutRow(keys: [settings.askTrigger.symbol, settings.askTrigger.symbol], hold: true,
+                            pressed: state.heldKey == .ask,
                             title: "Ask AI", detail: "Say a request; the answer is pasted instead of your words.")
             }
         }
@@ -341,13 +351,14 @@ private struct ShortcutsCard: View {
 private struct ShortcutRow: View {
     let keys: [String]
     let hold: Bool
+    var pressed = false
     let title: String
     let detail: String
 
     var body: some View {
         HStack(spacing: 18) {
             HStack(spacing: 6) {
-                ForEach(Array(keys.enumerated()), id: \.offset) { _, key in KeyCap(label: key) }
+                ForEach(Array(keys.enumerated()), id: \.offset) { _, key in KeyCap(label: key, pressed: pressed) }
                 if hold {
                     Text("hold").font(GoogleSans.labelSmall).foregroundStyle(M3.onSurfaceVariant).padding(.leading, 2)
                 }

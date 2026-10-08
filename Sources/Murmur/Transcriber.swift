@@ -8,6 +8,7 @@ enum Log {
     static let app = Logger(subsystem: "com.danbartley.murmur", category: "app")
     static let audio = Logger(subsystem: "com.danbartley.murmur", category: "audio")
     static let model = Logger(subsystem: "com.danbartley.murmur", category: "model")
+    static let keys = Logger(subsystem: "com.danbartley.murmur", category: "keys")
 }
 
 /// Where models live: ~/Library/Application Support/Murmur/huggingface.
