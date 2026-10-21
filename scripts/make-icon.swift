@@ -1,6 +1,6 @@
 import AppKit
 
-// Murmur's app icon: four rounded bars in Google's colours on a white tile.
+// Murmur's app icon: four rounded bars in Bartley's colours on a white tile.
 // Follows the macOS icon grid (824 pt tile on a 1024 pt canvas, with shadow).
 // Usage: swift scripts/make-icon.swift assets/AppIcon.iconset
 
@@ -32,7 +32,7 @@ func draw(_ px: Int) -> NSBitmapImageRep {
 
     ctx.saveGState()
     ctx.addPath(path); ctx.clip()
-    let bg = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: [color(0xFFFFFF), color(0xEEF2F7)] as CFArray,
+    let bg = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: [color(0xFFFFFF), color(0xF7EBE5)] as CFArray,
                         locations: [0, 1])!
     ctx.drawLinearGradient(bg, start: CGPoint(x: 512, y: 924), end: CGPoint(x: 512, y: 100), options: [])
     ctx.restoreGState()
@@ -42,7 +42,7 @@ func draw(_ px: Int) -> NSBitmapImageRep {
     ctx.setStrokeColor(color(0x000000, 0.06)); ctx.setLineWidth(2); ctx.strokePath()
 
     // Four bars, centred.
-    let colors: [UInt32] = [0x4285F4, 0xEA4335, 0xFBBC04, 0x34A853]
+    let colors: [UInt32] = [0xD1643B, 0xB76E88, 0x9277BB, 0x4C8F85]
     let heights: [CGFloat] = [300, 520, 400, 230]
     let barWidth: CGFloat = 92, gap: CGFloat = 50
     let total = barWidth * 4 + gap * 3

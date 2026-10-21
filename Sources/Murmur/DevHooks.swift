@@ -113,7 +113,7 @@ enum DevHooks {
                 model.content = content
                 model.visible = true
                 let view = ZStack {
-                    LinearGradient(colors: [Color(hex: 0xDCE6F5), Color(hex: 0xF4E9F0)], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(colors: [Color(hex: 0xF7EBE5), Color(hex: 0xFFDBCD)], startPoint: .top, endPoint: .bottom)
                     HUDView(model: model, previewLevel: 0.7)
                 }
                 .frame(width: HUDController.size.width, height: HUDController.size.height)

@@ -121,7 +121,7 @@ struct HUDView: View {
             .frame(minWidth: 50)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color(hex: 0x1E1F20, opacity: 0.97))
+                    .fill(Color(hex: 0x1F1714, opacity: 0.97))
                     .overlay(Capsule(style: .continuous).strokeBorder(.white.opacity(0.09), lineWidth: 1))
                     .shadow(color: .black.opacity(0.32), radius: 18, y: 8)
             )
@@ -135,10 +135,10 @@ struct HUDView: View {
             HStack(spacing: 14) {
                 if locked {
                     Image(systemName: "lock.fill").font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color(hex: 0xA8C7FA))
+                        .foregroundStyle(Color(hex: 0xFFB59A))
                 } else if mode == .ask {
                     Image(systemName: "sparkles").font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(LinearGradient(colors: [M3.blue, Color(hex: 0xA142F4), M3.red],
+                        .foregroundStyle(LinearGradient(colors: M3.glow,
                                                         startPoint: .topLeading, endPoint: .bottomTrailing))
                 }
                 VoiceBars(preview: previewLevel)
@@ -160,7 +160,7 @@ struct HUDView: View {
                 ThinkingDots()
                 Text(mode == .ask ? "Thinking" : "Transcribing")
                     .font(GoogleSans.font(14, 500))
-                    .foregroundStyle(Color(hex: 0xE3E3E3))
+                    .foregroundStyle(Color(hex: 0xF1DFD8))
             }
         case .done(let copied):
             HStack(spacing: 10) {
@@ -172,7 +172,7 @@ struct HUDView: View {
                 if copied {
                     Text("Copied — no text field. Paste with ⌘V")
                         .font(GoogleSans.font(14, 500))
-                        .foregroundStyle(Color(hex: 0xE3E3E3))
+                        .foregroundStyle(Color(hex: 0xF1DFD8))
                 }
             }
             .padding(.horizontal, copied ? 0 : -5)
@@ -180,11 +180,11 @@ struct HUDView: View {
             HStack(spacing: 12) {
                 Image(systemName: symbol)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(tone == .warning ? Color(hex: 0xFDD663) : Color(hex: 0xC4C7C5))
+                    .foregroundStyle(tone == .warning ? Color(hex: 0xFDD663) : Color(hex: 0xD4C0B8))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(GoogleSans.font(14, 500)).foregroundStyle(Color(hex: 0xE3E3E3))
+                    Text(title).font(GoogleSans.font(14, 500)).foregroundStyle(Color(hex: 0xF1DFD8))
                     if let detail {
-                        Text(detail).font(GoogleSans.font(12, 400)).foregroundStyle(Color(hex: 0xC4C7C5))
+                        Text(detail).font(GoogleSans.font(12, 400)).foregroundStyle(Color(hex: 0xD4C0B8))
                     }
                 }
                 .lineLimit(1)
@@ -200,10 +200,10 @@ struct HUDView: View {
     private var hint: some View {
         Text("Tap \(hintKey.symbol) to finish   ·   esc to cancel")
             .font(GoogleSans.font(12, 500))
-            .foregroundStyle(Color(hex: 0xE3E3E3).opacity(0.85))
+            .foregroundStyle(Color(hex: 0xF1DFD8).opacity(0.85))
             .padding(.horizontal, 12)
             .frame(height: 26)
-            .background(Capsule().fill(Color(hex: 0x1E1F20, opacity: 0.85)))
+            .background(Capsule().fill(Color(hex: 0x1F1714, opacity: 0.85)))
     }
 }
 
@@ -218,9 +218,9 @@ private struct HUDButton: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(filled ? Color(hex: 0x062E6F) : Color(hex: 0xE3E3E3))
+                .foregroundStyle(filled ? Color(hex: 0x5A1B00) : Color(hex: 0xF1DFD8))
                 .frame(width: 30, height: 30)
-                .background(Circle().fill(filled ? Color(hex: 0xA8C7FA) : Color.white.opacity(hovering ? 0.16 : 0.10)))
+                .background(Circle().fill(filled ? Color(hex: 0xFFB59A) : Color.white.opacity(hovering ? 0.16 : 0.10)))
                 .brightness(filled && hovering ? 0.06 : 0)
         }
         .buttonStyle(.plain)
@@ -237,7 +237,7 @@ private struct ElapsedText: View {
             Text(String(format: "%d:%02d", s / 60, s % 60))
                 .font(GoogleSans.font(13, 500))
                 .monospacedDigit()
-                .foregroundStyle(Color(hex: 0xC4C7C5))
+                .foregroundStyle(Color(hex: 0xD4C0B8))
                 .frame(minWidth: 32, alignment: .leading)
         }
     }

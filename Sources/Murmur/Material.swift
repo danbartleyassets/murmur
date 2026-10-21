@@ -34,26 +34,29 @@ extension NSColor {
 }
 
 enum M3 {
+    // Bartley Studio's scheme (bartleystudio.com: Flex light, Flex Night dark), mapped onto
+    // the same Material 3 roles Google's palette used here.
+
     // Surfaces
-    static let background         = Color(light: 0xF0F4F9, dark: 0x131314)
-    static let surface            = Color(light: 0xFFFFFF, dark: 0x1E1F20)
-    static let container          = Color(light: 0xF0F4F9, dark: 0x282A2C)
-    static let containerHigh      = Color(light: 0xE9EEF6, dark: 0x333537)
-    static let containerHighest   = Color(light: 0xDDE3EA, dark: 0x3C3F41)
+    static let background         = Color(light: 0xF7EBE5, dark: 0x17100D)
+    static let surface            = Color(light: 0xFFFFFF, dark: 0x1F1714)
+    static let container          = Color(light: 0xF7EBE5, dark: 0x2F2622)
+    static let containerHigh      = Color(light: 0xF1E5DF, dark: 0x3A302C)
+    static let containerHighest   = Color(light: 0xEBDFD9, dark: 0x453A36)
 
     // Content
-    static let onSurface          = Color(light: 0x1F1F1F, dark: 0xE3E3E3)
-    static let onSurfaceVariant   = Color(light: 0x444746, dark: 0xC4C7C5)
-    static let outline            = Color(light: 0x747775, dark: 0x8E918F)
-    static let outlineVariant     = Color(light: 0xC4C7C5, dark: 0x444746)
+    static let onSurface          = Color(light: 0x231A16, dark: 0xF1DFD8)
+    static let onSurfaceVariant   = Color(light: 0x53443E, dark: 0xD4C0B8)
+    static let outline            = Color(light: 0x85736C, dark: 0xA08D86)
+    static let outlineVariant     = Color(light: 0xD8C2BA, dark: 0x4C403B)
 
-    // Accent
-    static let primary            = Color(light: 0x0B57D0, dark: 0xA8C7FA)
-    static let onPrimary          = Color(light: 0xFFFFFF, dark: 0x062E6F)
-    static let primaryContainer   = Color(light: 0xD3E3FD, dark: 0x0842A0)
-    static let onPrimaryContainer = Color(light: 0x041E49, dark: 0xD3E3FD)
-    static let secondaryContainer = Color(light: 0xC2E7FF, dark: 0x004A77)
-    static let onSecondaryContainer = Color(light: 0x001D35, dark: 0xC2E7FF)
+    // Accent: rust primary, teal secondary
+    static let primary            = Color(light: 0xA8461F, dark: 0xFFB59A)
+    static let onPrimary          = Color(light: 0xFFFFFF, dark: 0x5A1B00)
+    static let primaryContainer   = Color(light: 0xFFDBCD, dark: 0x7A2D0E)
+    static let onPrimaryContainer = Color(light: 0x380D00, dark: 0xFFDBCD)
+    static let secondaryContainer = Color(light: 0xC3EBE3, dark: 0x234E48)
+    static let onSecondaryContainer = Color(light: 0x00201C, dark: 0xBFECE3)
 
     // Status
     static let success            = Color(light: 0x146C2E, dark: 0x6DD58C)
@@ -62,12 +65,15 @@ enum M3 {
     static let warningContainer   = Color(light: 0xFFEFC3, dark: 0x4D3800)
     static let error              = Color(light: 0xB3261E, dark: 0xF2B8B5)
 
-    // Google brand
-    static let blue   = Color(hex: 0x4285F4)
-    static let red    = Color(hex: 0xEA4335)
-    static let yellow = Color(hex: 0xFBBC04)
-    static let green  = Color(hex: 0x34A853)
-    static let brand: [Color] = [blue, red, yellow, green]
+    // Bartley brand: the four colours of the site's gradient, at mark strength
+    static let rust  = Color(hex: 0xD1643B)
+    static let rose  = Color(hex: 0xB76E88)
+    static let lilac = Color(hex: 0x9277BB)
+    static let teal  = Color(hex: 0x4C8F85)
+    static let brand: [Color] = [rust, rose, lilac, teal]
+
+    // The site's glow gradient (Flex Night), for Ask AI
+    static let glow: [Color] = [Color(hex: 0xFFB59A), Color(hex: 0xF5A3BF), Color(hex: 0xC6A9F1), Color(hex: 0x8FD3C7)]
 }
 
 // MARK: - Type
@@ -442,7 +448,7 @@ struct StatusChip: View {
         case .busy: return (M3.primaryContainer, M3.onPrimaryContainer)
         case .warning: return (M3.warningContainer, M3.warning)
         case .neutral: return (M3.containerHigh, M3.onSurfaceVariant)
-        case .live: return (M3.red.opacity(0.14), M3.red)
+        case .live: return (M3.rust.opacity(0.14), M3.rust)
         }
     }
 
@@ -507,7 +513,7 @@ struct KeyCap: View {
     }
 }
 
-/// Google's four colours as a small mark.
+/// Bartley's four colours as a small mark.
 struct BrandMark: View {
     var size: CGFloat = 40
     var body: some View {
