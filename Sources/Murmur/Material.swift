@@ -76,6 +76,17 @@ enum M3 {
     static let glow: [Color] = [Color(hex: 0xFFB59A), Color(hex: 0xF5A3BF), Color(hex: 0xC6A9F1), Color(hex: 0x8FD3C7)]
 }
 
+extension AppearanceMode {
+    /// Light by default, as on bartleystudio.com; dark and "match the Mac" are options.
+    @MainActor func apply() {
+        switch self {
+        case .light: NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+        case .system: NSApp.appearance = nil
+        }
+    }
+}
+
 // MARK: - Type
 
 /// Google Sans Flex, bundled with the app and registered at launch.

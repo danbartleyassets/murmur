@@ -508,6 +508,13 @@ private struct GeneralPage: View {
                     }
             }
 
+            Card {
+                SectionTitle(text: "Appearance").padding(.bottom, 14)
+                SegmentedButtons(options: [(AppearanceMode.light, "Light"), (.dark, "Dark"), (.system, "Match Mac")],
+                                 selection: $settings.appearance)
+                    .onChange(of: settings.appearance) { _, new in new.apply() }
+            }
+
             Card(padding: 8) {
                 VStack(spacing: 0) {
                     ListRow(symbol: "power", title: "Open at login",

@@ -34,6 +34,11 @@ enum TriggerKey: String, CaseIterable, Identifiable {
     }
 }
 
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case light, dark, system
+    var id: String { rawValue }
+}
+
 enum InsertionMethod: String, CaseIterable, Identifiable {
     case paste, type
     var id: String { rawValue }
@@ -85,6 +90,7 @@ final class SettingsStore: ObservableObject {
     @Published var smartSpacing: Bool { didSet { d.set(smartSpacing, forKey: "smartSpacing") } }
     @Published var soundsEnabled: Bool { didSet { d.set(soundsEnabled, forKey: "soundsEnabled") } }
     @Published var keepHistory: Bool { didSet { d.set(keepHistory, forKey: "keepHistory") } }
+    @Published var appearance: AppearanceMode { didSet { d.set(appearance.rawValue, forKey: "appearance") } }
 
     private init() {
         enabled = d.object(forKey: "enabled") as? Bool ?? true
@@ -99,6 +105,7 @@ final class SettingsStore: ObservableObject {
         smartSpacing = d.object(forKey: "smartSpacing") as? Bool ?? true
         soundsEnabled = d.object(forKey: "soundsEnabled") as? Bool ?? true
         keepHistory = d.object(forKey: "keepHistory") as? Bool ?? true
+        appearance = AppearanceMode(rawValue: d.string(forKey: "appearance") ?? "") ?? .light
     }
 
     var resolvedLanguage: String? {

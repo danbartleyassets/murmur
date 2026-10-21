@@ -85,6 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         GoogleSans.register()
         NSApp.setActivationPolicy(.accessory)
         MainActor.assumeIsolated {
+            SettingsStore.shared.appearance.apply()
             if DevHooks.runIfRequested() { return }
             AppState.shared.start()
             let needsSetup = !Permissions.microphoneGranted || !Permissions.accessibilityGranted
