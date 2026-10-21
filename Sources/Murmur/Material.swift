@@ -33,30 +33,97 @@ extension NSColor {
     }
 }
 
+/// One Material 3 scheme, light and dark. The light values are bartleystudio.com's own
+/// (src/colour.css); the dark ones are Material Color Utilities' dark scheme from the same seed.
+struct Palette {
+    let background, surface, container, containerHigh, containerHighest: Color
+    let onSurface, onSurfaceVariant, outline, outlineVariant: Color
+    let primary, onPrimary, primaryContainer, onPrimaryContainer: Color
+    let secondaryContainer, onSecondaryContainer: Color
+
+    /// Hex pairs in the order above: (light, dark).
+    init(_ c: [(UInt32, UInt32)]) {
+        let k = c.map { Color(light: $0.0, dark: $0.1) }
+        (background, surface, container, containerHigh, containerHighest) = (k[0], k[1], k[2], k[3], k[4])
+        (onSurface, onSurfaceVariant, outline, outlineVariant) = (k[5], k[6], k[7], k[8])
+        (primary, onPrimary, primaryContainer, onPrimaryContainer) = (k[9], k[10], k[11], k[12])
+        (secondaryContainer, onSecondaryContainer) = (k[13], k[14])
+    }
+}
+
+/// The site's four schemes, each seeded from a product in Bartley's work.
+enum SchemeName: String, CaseIterable {
+    case rust, sage, teal, marigold
+
+    var palette: Palette {
+        switch self {
+        case .rust: return Palette([
+            (0xF7EBE5, 0x1A110F), (0xFFFFFF, 0x231A16), (0xF7EBE5, 0x322824), (0xF1E5DF, 0x3D322F), (0xEBDFD9, 0x463A36),
+            (0x231A16, 0xF1DFD9), (0x53443E, 0xD8C2BB), (0x85736C, 0xA08D86), (0xD8C2BA, 0x53433E),
+            (0xA8461F, 0xFFB59B), (0xFFFFFF, 0x55200B), (0xFFDBCD, 0x72351F), (0x380D00, 0xFFDBCF),
+            (0xFFDBCF, 0x5D4036), (0x2C160D, 0xFFDBCF)])
+        case .sage: return Palette([
+            (0xECEFE4, 0x11140F), (0xFFFFFF, 0x191D17), (0xECEFE4, 0x272B25), (0xE6E9DE, 0x32362F), (0xE1E4D9, 0x3A3E37),
+            (0x1A1C17, 0xE1E4DA), (0x43483F, 0xC3C8BC), (0x73796E, 0x8D9387), (0xC3C8BB, 0x43483F),
+            (0x4A6741, 0xA5D395), (0xFFFFFF, 0x11380B), (0xCBEDBC, 0x295020), (0x072106, 0xC0EFAF),
+            (0xD6E8CD, 0x3C4B37), (0x111F0E, 0xD7E8CD)])
+        case .teal: return Palette([
+            (0xE9EFEE, 0x0E1514), (0xFFFFFF, 0x161D1D), (0xE9EFEE, 0x252B2B), (0xE3E9E9, 0x2F3636), (0xDDE4E3, 0x373E3E),
+            (0x161D1D, 0xDDE4E3), (0x3F4948, 0xBEC8C8), (0x6F7979, 0x899392), (0xBEC9C8, 0x3F4948),
+            (0x00696A, 0x80D4D5), (0xFFFFFF, 0x003737), (0x9CF1EF, 0x004F50), (0x002020, 0x9CF1F1),
+            (0xCCE8E7, 0x324B4B), (0x051F1F, 0xCCE8E7)])
+        case .marigold: return Palette([
+            (0xF6ECE4, 0x18120C), (0xFFFFFF, 0x211A14), (0xF6ECE4, 0x302921), (0xF1E7DE, 0x3B332C), (0xEBE1D9, 0x443B34),
+            (0x201B16, 0xEEE0D5), (0x51453A, 0xD4C4B5), (0x827568, 0x9D8E81), (0xD5C4B5, 0x50453A),
+            (0x875200, 0xFABA72), (0xFFFFFF, 0x482900), (0xFFDCBC, 0x673D00), (0x2C1700, 0xFFDDBA),
+            (0xFEDCBE, 0x58432C), (0x291806, 0xFDDDBD)])
+        }
+    }
+}
+
+/// The scheme on screen. Like the site, which takes the scheme of the section in view,
+/// the window takes the scheme of the page that's open, and every colour blends across.
+final class Theme: ObservableObject {
+    static let shared = Theme()
+    private static let palettes = Dictionary(uniqueKeysWithValues: SchemeName.allCases.map { ($0, $0.palette) })
+
+    @Published private(set) var scheme: SchemeName = .rust
+    private(set) var palette = SchemeName.rust.palette
+
+    func show(_ next: SchemeName, animated: Bool = true) {
+        guard next != scheme else { return }
+        let change = { self.palette = Self.palettes[next]!; self.scheme = next }
+        if animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            withAnimation(.timingCurve(0.2, 0, 0, 1, duration: 1), change)
+        } else {
+            change()
+        }
+    }
+}
+
 enum M3 {
-    // Bartley Studio's scheme (bartleystudio.com: Flex light, Flex Night dark), mapped onto
-    // the same Material 3 roles Google's palette used here.
+    private static var p: Palette { Theme.shared.palette }
 
     // Surfaces
-    static let background         = Color(light: 0xF7EBE5, dark: 0x17100D)
-    static let surface            = Color(light: 0xFFFFFF, dark: 0x1F1714)
-    static let container          = Color(light: 0xF7EBE5, dark: 0x2F2622)
-    static let containerHigh      = Color(light: 0xF1E5DF, dark: 0x3A302C)
-    static let containerHighest   = Color(light: 0xEBDFD9, dark: 0x453A36)
+    static var background: Color { p.background }
+    static var surface: Color { p.surface }
+    static var container: Color { p.container }
+    static var containerHigh: Color { p.containerHigh }
+    static var containerHighest: Color { p.containerHighest }
 
     // Content
-    static let onSurface          = Color(light: 0x231A16, dark: 0xF1DFD8)
-    static let onSurfaceVariant   = Color(light: 0x53443E, dark: 0xD4C0B8)
-    static let outline            = Color(light: 0x85736C, dark: 0xA08D86)
-    static let outlineVariant     = Color(light: 0xD8C2BA, dark: 0x4C403B)
+    static var onSurface: Color { p.onSurface }
+    static var onSurfaceVariant: Color { p.onSurfaceVariant }
+    static var outline: Color { p.outline }
+    static var outlineVariant: Color { p.outlineVariant }
 
-    // Accent: rust primary, teal secondary
-    static let primary            = Color(light: 0xA8461F, dark: 0xFFB59A)
-    static let onPrimary          = Color(light: 0xFFFFFF, dark: 0x5A1B00)
-    static let primaryContainer   = Color(light: 0xFFDBCD, dark: 0x7A2D0E)
-    static let onPrimaryContainer = Color(light: 0x380D00, dark: 0xFFDBCD)
-    static let secondaryContainer = Color(light: 0xC3EBE3, dark: 0x234E48)
-    static let onSecondaryContainer = Color(light: 0x00201C, dark: 0xBFECE3)
+    // Accent
+    static var primary: Color { p.primary }
+    static var onPrimary: Color { p.onPrimary }
+    static var primaryContainer: Color { p.primaryContainer }
+    static var onPrimaryContainer: Color { p.onPrimaryContainer }
+    static var secondaryContainer: Color { p.secondaryContainer }
+    static var onSecondaryContainer: Color { p.onSecondaryContainer }
 
     // Status
     static let success            = Color(light: 0x146C2E, dark: 0x6DD58C)
@@ -150,6 +217,8 @@ enum GoogleSans {
 // MARK: - Buttons
 
 struct FilledButtonStyle: ButtonStyle {
+
+    @ObservedObject private var theme = Theme.shared
     var tint: Color = M3.primary
     var onTint: Color = M3.onPrimary
     @Environment(\.isEnabled) private var enabled
@@ -169,6 +238,8 @@ struct FilledButtonStyle: ButtonStyle {
 }
 
 struct TonalButtonStyle: ButtonStyle {
+
+    @ObservedObject private var theme = Theme.shared
     @Environment(\.isEnabled) private var enabled
     @State private var hovering = false
 
@@ -186,6 +257,8 @@ struct TonalButtonStyle: ButtonStyle {
 }
 
 struct TextButtonStyle: ButtonStyle {
+
+    @ObservedObject private var theme = Theme.shared
     var tint: Color = M3.primary
     @State private var hovering = false
 
@@ -202,6 +275,8 @@ struct TextButtonStyle: ButtonStyle {
 }
 
 struct OutlinedButtonStyle: ButtonStyle {
+
+    @ObservedObject private var theme = Theme.shared
     @State private var hovering = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -219,6 +294,7 @@ struct OutlinedButtonStyle: ButtonStyle {
 
 /// Round icon-only button (copy, delete…).
 struct IconButton: View {
+    @ObservedObject private var theme = Theme.shared
     let symbol: String
     var help: String = ""
     var size: CGFloat = 32
@@ -254,6 +330,8 @@ struct M3SwitchStyle: ToggleStyle {
 }
 
 struct M3Switch: View {
+
+    @ObservedObject private var theme = Theme.shared
     @Binding var isOn: Bool
     @Environment(\.isEnabled) private var enabled
     @State private var hovering = false
@@ -294,6 +372,8 @@ struct M3Switch: View {
 // MARK: - Segmented button
 
 struct SegmentedButtons<T: Hashable>: View {
+
+    @ObservedObject private var theme = Theme.shared
     let options: [(T, String)]
     @Binding var selection: T
 
@@ -332,6 +412,7 @@ struct SegmentedButtons<T: Hashable>: View {
 
 /// An outlined field that opens a menu, in place of the stock pop-up button.
 struct Dropdown<T: Hashable>: View {
+    @ObservedObject private var theme = Theme.shared
     let options: [(T, String)]
     @Binding var selection: T
     var width: CGFloat? = 260
@@ -370,6 +451,8 @@ struct Dropdown<T: Hashable>: View {
 // MARK: - Text field
 
 struct M3TextField: View {
+
+    @ObservedObject private var theme = Theme.shared
     let placeholder: String
     @Binding var text: String
     var onSubmit: () -> Void = {}
@@ -393,6 +476,8 @@ struct M3TextField: View {
 // MARK: - Layout pieces
 
 struct Card<Content: View>: View {
+
+    @ObservedObject private var theme = Theme.shared
     var padding: CGFloat = 20
     @ViewBuilder var content: Content
 
@@ -405,6 +490,8 @@ struct Card<Content: View>: View {
 }
 
 struct SectionTitle: View {
+
+    @ObservedObject private var theme = Theme.shared
     let text: String
     var body: some View {
         Text(text).font(GoogleSans.title).foregroundStyle(M3.onSurface)
@@ -413,6 +500,7 @@ struct SectionTitle: View {
 
 /// A settings row: tonal icon, title, supporting text, trailing control.
 struct ListRow<Trailing: View>: View {
+    @ObservedObject private var theme = Theme.shared
     var symbol: String?
     let title: String
     var detail: String?
@@ -442,6 +530,8 @@ struct ListRow<Trailing: View>: View {
 }
 
 struct RowDivider: View {
+
+    @ObservedObject private var theme = Theme.shared
     var inset: CGFloat = 52
     var body: some View {
         Rectangle().fill(M3.outlineVariant.opacity(0.6)).frame(height: 1).padding(.leading, inset)
@@ -449,6 +539,8 @@ struct RowDivider: View {
 }
 
 struct StatusChip: View {
+
+    @ObservedObject private var theme = Theme.shared
     enum Tone { case good, busy, warning, neutral, live }
     let text: String
     let tone: Tone
@@ -477,6 +569,7 @@ struct StatusChip: View {
 
 /// Material linear progress indicator (determinate, or a sliding bar when nil).
 struct LinearProgress: View {
+    @ObservedObject private var theme = Theme.shared
     var value: Double?
 
     var body: some View {
@@ -504,6 +597,7 @@ struct LinearProgress: View {
 
 /// A keyboard key, for showing shortcuts.
 struct KeyCap: View {
+    @ObservedObject private var theme = Theme.shared
     let label: String
     var pressed = false
 
@@ -526,6 +620,7 @@ struct KeyCap: View {
 
 /// Bartley's four colours as a small mark.
 struct BrandMark: View {
+    @ObservedObject private var theme = Theme.shared
     var size: CGFloat = 40
     var body: some View {
         HStack(spacing: size * 0.08) {

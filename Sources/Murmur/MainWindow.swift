@@ -25,6 +25,16 @@ enum Page: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Each page wears one of the site's schemes.
+    var scheme: SchemeName {
+        switch self {
+        case .home, .ask: return .rust
+        case .general: return .sage
+        case .dictation: return .teal
+        case .vocabulary: return .marigold
+        }
+    }
+
     /// The filled variant for the selected tab, where SF Symbols has one
     /// (there's no "waveform.fill" or "sparkles.fill").
     var selectedSymbol: String {
@@ -35,11 +45,14 @@ enum Page: String, CaseIterable, Identifiable {
 
 @MainActor
 final class Navigation: ObservableObject {
-    @Published var page: Page = .home
+    @Published var page: Page = .home {
+        didSet { Theme.shared.show(page.scheme, animated: !DevHooks.isRendering) }
+    }
 }
 
 /// The one window: a Google-style navigation drawer and a content sheet.
 struct MainView: View {
+    @ObservedObject private var theme = Theme.shared
     @ObservedObject var nav: Navigation
     @EnvironmentObject private var state: AppState
 
@@ -88,6 +101,8 @@ extension MainView {
 // MARK: - Sidebar
 
 private struct Sidebar: View {
+
+    @ObservedObject private var theme = Theme.shared
     @ObservedObject var nav: Navigation
     @EnvironmentObject private var state: AppState
 
@@ -117,6 +132,8 @@ private struct Sidebar: View {
 }
 
 private struct NavItem: View {
+
+    @ObservedObject private var theme = Theme.shared
     let page: Page
     let selected: Bool
     let action: () -> Void
@@ -172,6 +189,8 @@ struct OverallStatus: View {
 // MARK: - Page scaffolding
 
 struct PageHeader: View {
+
+    @ObservedObject private var theme = Theme.shared
     let title: String
     var subtitle: String?
 
@@ -248,6 +267,8 @@ private struct SetupCard: View {
 }
 
 private struct SetupStep<Action: View>: View {
+
+    @ObservedObject private var theme = Theme.shared
     let number: Int
     let done: Bool
     let title: String
@@ -278,6 +299,8 @@ private struct SetupStep<Action: View>: View {
 }
 
 private struct ModelStep: View {
+
+    @ObservedObject private var theme = Theme.shared
     @EnvironmentObject private var state: AppState
 
     var body: some View {
@@ -324,6 +347,8 @@ private struct ModelStep: View {
 }
 
 private struct ShortcutsCard: View {
+
+    @ObservedObject private var theme = Theme.shared
     @EnvironmentObject private var state: AppState
     @ObservedObject private var settings = SettingsStore.shared
 
@@ -356,6 +381,8 @@ private struct ShortcutsCard: View {
 }
 
 private struct ShortcutRow: View {
+
+    @ObservedObject private var theme = Theme.shared
     let keys: [String]
     let hold: Bool
     var pressed = false
@@ -383,6 +410,8 @@ private struct ShortcutRow: View {
 }
 
 private struct TryItCard: View {
+
+    @ObservedObject private var theme = Theme.shared
     @ObservedObject private var settings = SettingsStore.shared
     @State private var text = ""
     @FocusState private var focused: Bool
@@ -453,6 +482,8 @@ private struct RecentCard: View {
 }
 
 private struct RecentRow: View {
+
+    @ObservedObject private var theme = Theme.shared
     let item: Dictation
     @State private var hovering = false
     @State private var copied = false
@@ -486,6 +517,8 @@ private struct RecentRow: View {
 // MARK: - General
 
 private struct GeneralPage: View {
+
+    @ObservedObject private var theme = Theme.shared
     @EnvironmentObject private var state: AppState
     @ObservedObject private var settings = SettingsStore.shared
     @State private var loginItem = LoginItem.isEnabled
@@ -660,6 +693,8 @@ private struct DictationPage: View {
 // MARK: - Vocabulary
 
 private struct VocabularyPage: View {
+
+    @ObservedObject private var theme = Theme.shared
     @ObservedObject private var vocab = VocabularyStore.shared
     @State private var newTerm = ""
     @State private var wrong = ""
@@ -736,6 +771,8 @@ private struct VocabularyPage: View {
 }
 
 private struct InputChip: View {
+
+    @ObservedObject private var theme = Theme.shared
     let text: String
     let onRemove: () -> Void
     @State private var hovering = false
@@ -792,6 +829,8 @@ struct FlowLayout: Layout {
 // MARK: - Ask AI
 
 private struct AskPage: View {
+
+    @ObservedObject private var theme = Theme.shared
     @ObservedObject private var settings = SettingsStore.shared
 
     var body: some View {
