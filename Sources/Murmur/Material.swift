@@ -138,9 +138,6 @@ enum M3 {
     static let lilac = Color(hex: 0x9277BB)
     static let teal  = Color(hex: 0x4C8F85)
     static let brand: [Color] = [rust, rose, lilac, teal]
-
-    // The site's glow gradient (Flex Night), for Ask AI
-    static let glow: [Color] = [Color(hex: 0xFFB59A), Color(hex: 0xF5A3BF), Color(hex: 0xC6A9F1), Color(hex: 0x8FD3C7)]
 }
 
 extension AppearanceMode {

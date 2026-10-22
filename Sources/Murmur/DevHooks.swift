@@ -108,18 +108,27 @@ enum DevHooks {
                 ("notice", .message(symbol: "hourglass", title: "Preparing the speech model",
                                     detail: "One-time setup, about 2 minutes", tone: .warning)),
             ]
-            for (name, content) in states {
-                let model = HUDModel()
-                model.content = content
-                model.visible = true
-                let view = ZStack {
-                    LinearGradient(colors: [Color(hex: 0xF7EBE5), Color(hex: 0xFFDBCD)], startPoint: .top, endPoint: .bottom)
-                    HUDView(model: model, previewLevel: 0.7)
+            for dark in [false, true] {
+                NSApp.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+                for (name, content) in states {
+                    let model = HUDModel()
+                    model.content = content
+                    model.visible = true
+                    let backdrop = dark ? [Color(hex: 0x3A3A3C), Color(hex: 0x1C1C1E)] : [Color(hex: 0xF7EBE5), Color(hex: 0xFFDBCD)]
+                    let view = ZStack {
+                        LinearGradient(colors: backdrop, startPoint: .top, endPoint: .bottom)
+                        HUDView(model: model, previewLevel: 0.7)
+                    }
+                    .frame(width: HUDController.size.width, height: HUDController.size.height)
+                    .environment(\.colorScheme, dark ? .dark : .light)
+                    let renderer = ImageRenderer(content: view)
+                    renderer.scale = 2
+                    NSAppearance(named: dark ? .darkAqua : .aqua)!.performAsCurrentDrawingAppearance {
+                        if let image = renderer.nsImage {
+                            write(image, to: dir.appendingPathComponent("hud-\(name)-\(dark ? "dark" : "light").png"))
+                        }
+                    }
                 }
-                .frame(width: HUDController.size.width, height: HUDController.size.height)
-                let renderer = ImageRenderer(content: view)
-                renderer.scale = 2
-                if let image = renderer.nsImage { write(image, to: dir.appendingPathComponent("hud-\(name).png")) }
             }
             print("Rendered to \(dir.path)")
             exit(0)

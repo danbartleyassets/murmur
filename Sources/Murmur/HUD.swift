@@ -111,7 +111,6 @@ struct HUDView: View {
         }
         .padding(.bottom, 26)
         .frame(width: HUDController.size.width, height: HUDController.size.height)
-        .environment(\.colorScheme, .dark)
     }
 
     private var pill: some View {
@@ -121,9 +120,9 @@ struct HUDView: View {
             .frame(minWidth: 50)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color(hex: 0x1F1714, opacity: 0.97))
-                    .overlay(Capsule(style: .continuous).strokeBorder(.white.opacity(0.09), lineWidth: 1))
-                    .shadow(color: .black.opacity(0.32), radius: 18, y: 8)
+                    .fill(HUDColor.pill.opacity(0.97))
+                    .overlay(Capsule(style: .continuous).strokeBorder(HUDColor.edge, lineWidth: 1))
+                    .shadow(color: HUDColor.shadow, radius: 18, y: 8)
             )
     }
 
@@ -135,10 +134,10 @@ struct HUDView: View {
             HStack(spacing: 14) {
                 if locked {
                     Image(systemName: "lock.fill").font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color(hex: 0xFFB59A))
+                        .foregroundStyle(HUDColor.accent)
                 } else if mode == .ask {
                     Image(systemName: "sparkles").font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(LinearGradient(colors: M3.glow,
+                        .foregroundStyle(LinearGradient(colors: HUDColor.glow,
                                                         startPoint: .topLeading, endPoint: .bottomTrailing))
                 }
                 VoiceBars(preview: previewLevel)
@@ -160,19 +159,19 @@ struct HUDView: View {
                 ThinkingDots()
                 Text(mode == .ask ? "Thinking" : "Transcribing")
                     .font(GoogleSans.font(14, 500))
-                    .foregroundStyle(Color(hex: 0xF1DFD8))
+                    .foregroundStyle(HUDColor.text)
             }
         case .done(let copied):
             HStack(spacing: 10) {
                 Image(systemName: copied ? "doc.on.clipboard.fill" : "checkmark")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color(hex: 0x0F5223))
+                    .foregroundStyle(HUDColor.onSuccess)
                     .frame(width: 24, height: 24)
-                    .background(Circle().fill(Color(hex: 0x6DD58C)))
+                    .background(Circle().fill(HUDColor.success))
                 if copied {
                     Text("Copied — no text field. Paste with ⌘V")
                         .font(GoogleSans.font(14, 500))
-                        .foregroundStyle(Color(hex: 0xF1DFD8))
+                        .foregroundStyle(HUDColor.text)
                 }
             }
             .padding(.horizontal, copied ? 0 : -5)
@@ -180,11 +179,11 @@ struct HUDView: View {
             HStack(spacing: 12) {
                 Image(systemName: symbol)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(tone == .warning ? Color(hex: 0xFDD663) : Color(hex: 0xD4C0B8))
+                    .foregroundStyle(tone == .warning ? HUDColor.warning : HUDColor.textMuted)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(GoogleSans.font(14, 500)).foregroundStyle(Color(hex: 0xF1DFD8))
+                    Text(title).font(GoogleSans.font(14, 500)).foregroundStyle(HUDColor.text)
                     if let detail {
-                        Text(detail).font(GoogleSans.font(12, 400)).foregroundStyle(Color(hex: 0xD4C0B8))
+                        Text(detail).font(GoogleSans.font(12, 400)).foregroundStyle(HUDColor.textMuted)
                     }
                 }
                 .lineLimit(1)
@@ -200,10 +199,10 @@ struct HUDView: View {
     private var hint: some View {
         Text("Tap \(hintKey.symbol) to finish   ·   esc to cancel")
             .font(GoogleSans.font(12, 500))
-            .foregroundStyle(Color(hex: 0xF1DFD8).opacity(0.85))
+            .foregroundStyle(HUDColor.text.opacity(0.85))
             .padding(.horizontal, 12)
             .frame(height: 26)
-            .background(Capsule().fill(Color(hex: 0x1F1714, opacity: 0.85)))
+            .background(Capsule().fill(HUDColor.pill.opacity(0.9)))
     }
 }
 
@@ -218,9 +217,9 @@ private struct HUDButton: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(filled ? Color(hex: 0x5A1B00) : Color(hex: 0xF1DFD8))
+                .foregroundStyle(filled ? HUDColor.onAccent : HUDColor.text)
                 .frame(width: 30, height: 30)
-                .background(Circle().fill(filled ? Color(hex: 0xFFB59A) : Color.white.opacity(hovering ? 0.16 : 0.10)))
+                .background(Circle().fill(filled ? HUDColor.accent : HUDColor.text.opacity(hovering ? 0.14 : 0.08)))
                 .brightness(filled && hovering ? 0.06 : 0)
         }
         .buttonStyle(.plain)
@@ -237,13 +236,13 @@ private struct ElapsedText: View {
             Text(String(format: "%d:%02d", s / 60, s % 60))
                 .font(GoogleSans.font(13, 500))
                 .monospacedDigit()
-                .foregroundStyle(Color(hex: 0xD4C0B8))
+                .foregroundStyle(HUDColor.textMuted)
                 .frame(minWidth: 32, alignment: .leading)
         }
     }
 }
 
-/// Four bars in Google's colours that rise with your voice (dots when you're quiet).
+/// Four bars in Bartley's colours that rise with your voice (dots when you're quiet).
 struct VoiceBars: View {
     var preview: Float? = nil   // fixed level for design previews
     @State private var motion = BarMotion()
@@ -302,4 +301,23 @@ struct ThinkingDots: View {
             .frame(height: 30)
         }
     }
+}
+
+/// The pill's colours: Bartley's rust scheme, light or dark with the app's Appearance setting.
+enum HUDColor {
+    static let pill      = Color(light: 0xFFFFFF, dark: 0x1F1714)
+    static let edge      = Color(light: 0xEBDFD9, dark: 0x3A302C)
+    static let shadow    = Color(nsColor: NSColor(name: nil) { a in
+        NSColor.black.withAlphaComponent(a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? 0.32 : 0.16)
+    })
+    static let text      = Color(light: 0x231A16, dark: 0xF1DFD8)
+    static let textMuted = Color(light: 0x53443E, dark: 0xD4C0B8)
+    static let accent    = Color(light: 0xA8461F, dark: 0xFFB59A)
+    static let onAccent  = Color(light: 0xFFFFFF, dark: 0x5A1B00)
+    static let success   = Color(light: 0xC4EED0, dark: 0x6DD58C)
+    static let onSuccess = Color(light: 0x146C2E, dark: 0x0F5223)
+    static let warning   = Color(light: 0x8C4F00, dark: 0xFDD663)
+    /// Ask AI's sparkle: the site's glow pastels on dark, the brand colours at full strength on light.
+    static let glow: [Color] = [(0xD1643B, 0xFFB59A), (0xB76E88, 0xF5A3BF), (0x9277BB, 0xC6A9F1), (0x4C8F85, 0x8FD3C7)]
+        .map { Color(light: $0.0, dark: $0.1) }
 }
