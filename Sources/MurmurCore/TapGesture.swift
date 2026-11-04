@@ -5,6 +5,8 @@ import Foundation
 ///
 ///   double-tap, hold   → record while held, insert on release      (push-to-talk)
 ///   triple-tap         → record hands-free until the next tap       (locked)
+///   four taps          → message mode, hands-free                   (locked)
+///   four taps, hold    → message mode while held, insert on release
 ///   tap while locked   → finish and insert
 ///
 /// Recording starts on the *second* press so the first words are never lost.
@@ -19,6 +21,7 @@ public struct TapGesture: Sendable {
         case none
         case startRecording
         case lock
+        case message         // a fourth tap: switch this recording to message mode
         case finish          // stop and insert the transcript
         case discard         // stop and throw the audio away (accidental double-tap)
     }
@@ -30,6 +33,8 @@ public struct TapGesture: Sendable {
         case secondDown(at: TimeInterval)        // recording, push-to-talk or start of a triple
         case awaitingThird(at: TimeInterval)     // recording, second press was a tap
         case lockPressed                         // recording, third press still held
+        case lockReleased(at: TimeInterval)      // recording, locked, a fourth tap may still come
+        case messageDown(at: TimeInterval)       // recording, fourth press held
         case locked                              // recording, hands-free
         case lockedDown(at: TimeInterval)        // recording, trigger pressed while locked
         case lockedChord                         // recording, trigger used for a chord while locked
@@ -50,14 +55,15 @@ public struct TapGesture: Sendable {
     /// Whether the machine believes a recording is in progress.
     public var isRecording: Bool {
         switch state {
-        case .secondDown, .awaitingThird, .lockPressed, .locked, .lockedDown, .lockedChord: return true
+        case .secondDown, .awaitingThird, .lockPressed, .lockReleased, .messageDown, .locked, .lockedDown, .lockedChord:
+            return true
         default: return false
         }
     }
 
     public var isLocked: Bool {
         switch state {
-        case .lockPressed, .locked, .lockedDown, .lockedChord: return true
+        case .lockPressed, .lockReleased, .messageDown, .locked, .lockedDown, .lockedChord: return true
         default: return false
         }
     }
@@ -65,7 +71,7 @@ public struct TapGesture: Sendable {
     /// When the host should call `tick(at:)` next, if a timeout is pending.
     public var deadline: TimeInterval? {
         switch state {
-        case .firstTapped(let t), .awaitingThird(let t): return t + window
+        case .firstTapped(let t), .awaitingThird(let t), .lockReleased(let t): return t + window
         default: return nil
         }
     }
@@ -90,9 +96,15 @@ public struct TapGesture: Sendable {
             // Too late for a triple: the timeout should already have discarded.
             state = .firstDown(at: t)
             return .discard
+        case .lockReleased(let up):
+            if t - up <= window {
+                state = .messageDown(at: t)
+                return .message
+            }
+            state = .lockedDown(at: t)
         case .locked:
             state = .lockedDown(at: t)
-        case .firstDown, .secondDown, .lockPressed, .lockedDown, .lockedChord:
+        case .firstDown, .secondDown, .lockPressed, .messageDown, .lockedDown, .lockedChord:
             break // a repeat "down" without an "up" — ignore
         }
         return .none
@@ -109,6 +121,12 @@ public struct TapGesture: Sendable {
             }
             state = .awaitingThird(at: t)
         case .lockPressed:
+            state = .lockReleased(at: t)
+        case .messageDown(let down):
+            if t - down >= tapMax {
+                state = .idle
+                return .finish  // four taps, the last one held: push-to-talk in message mode
+            }
             state = .locked
         case .lockedDown(let down):
             if t - down <= tapMax {
@@ -118,7 +136,7 @@ public struct TapGesture: Sendable {
             state = .locked // a long press while locked does nothing
         case .lockedChord:
             state = .locked
-        case .idle, .firstTapped, .awaitingThird, .locked:
+        case .idle, .firstTapped, .awaitingThird, .lockReleased, .locked:
             break
         }
         return .none
@@ -132,7 +150,9 @@ public struct TapGesture: Sendable {
         case .awaitingThird:
             state = .idle
             return .discard
-        case .lockedDown:
+        case .lockReleased:
+            state = .locked
+        case .lockedDown, .messageDown:
             state = .lockedChord
         case .idle, .secondDown, .lockPressed, .locked, .lockedChord:
             break // typing while recording doesn't stop it
@@ -148,6 +168,8 @@ public struct TapGesture: Sendable {
         case .awaitingThird(let up) where t - up >= window:
             state = .idle
             return .discard
+        case .lockReleased(let up) where t - up >= window:
+            state = .locked
         default:
             break
         }

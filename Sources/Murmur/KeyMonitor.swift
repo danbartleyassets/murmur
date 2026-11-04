@@ -4,6 +4,7 @@ import MurmurCore
 enum CaptureMode: Equatable {
     case dictate   // type what I say
     case ask       // send what I say to the on-device model, type its answer
+    case message   // four taps: tidy a rambling dictation into a clean chat message
 }
 
 /// Watches the keyboard from any app through a Core Graphics event tap and feeds

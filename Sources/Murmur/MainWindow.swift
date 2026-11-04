@@ -369,6 +369,10 @@ private struct ShortcutsCard: View {
                         pressed: state.heldKey == .dictate,
                         title: "Hands-free", detail: "Triple-tap, then talk as long as you like. Tap \(settings.trigger.symbol) once to finish.")
             RowDivider(inset: 0)
+            ShortcutRow(keys: Array(repeating: settings.trigger.symbol, count: 4), hold: false,
+                        pressed: state.heldKey == .dictate,
+                        title: "Message", detail: "Tap four times and ramble. Filler words come out and it's tidied into a clean message. Tap \(settings.trigger.symbol) to finish.")
+            RowDivider(inset: 0)
             ShortcutRow(keys: ["esc"], hold: false, title: "Cancel", detail: "Throws the recording away.")
             if settings.askEnabled {
                 RowDivider(inset: 0)

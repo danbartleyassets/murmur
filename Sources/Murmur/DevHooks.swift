@@ -102,6 +102,8 @@ enum DevHooks {
                 ("recording", .recording(mode: .dictate, locked: false, started: started)),
                 ("locked", .recording(mode: .dictate, locked: true, started: started.addingTimeInterval(-64))),
                 ("ask", .recording(mode: .ask, locked: false, started: started)),
+                ("message", .recording(mode: .message, locked: true, started: started.addingTimeInterval(-23))),
+                ("message-working", .working(mode: .message)),
                 ("working", .working(mode: .dictate)),
                 ("done", .done(copied: false)),
                 ("copied", .done(copied: true)),

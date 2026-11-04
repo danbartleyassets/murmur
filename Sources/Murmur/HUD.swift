@@ -113,6 +113,14 @@ struct HUDView: View {
         .frame(width: HUDController.size.width, height: HUDController.size.height)
     }
 
+    /// Message mode tints the whole pill teal, so it's obvious at a glance.
+    private var isMessage: Bool {
+        switch model.content {
+        case .recording(.message, _, _), .working(.message): return true
+        default: return false
+        }
+    }
+
     private var pill: some View {
         content
             .padding(.horizontal, 18)
@@ -120,8 +128,9 @@ struct HUDView: View {
             .frame(minWidth: 50)
             .background(
                 Capsule(style: .continuous)
-                    .fill(HUDColor.pill.opacity(0.97))
-                    .overlay(Capsule(style: .continuous).strokeBorder(HUDColor.edge, lineWidth: 1))
+                    .fill((isMessage ? HUDColor.messagePill : HUDColor.pill).opacity(0.97))
+                    .overlay(Capsule(style: .continuous)
+                        .strokeBorder(isMessage ? HUDColor.messageEdge : HUDColor.edge, lineWidth: isMessage ? 1.5 : 1))
                     .shadow(color: HUDColor.shadow, radius: 18, y: 8)
             )
     }
@@ -132,7 +141,9 @@ struct HUDView: View {
             EmptyView()
         case .recording(let mode, let locked, let started):
             HStack(spacing: 14) {
-                if locked {
+                if mode == .message {
+                    MessageBadge()
+                } else if locked {
                     Image(systemName: "lock.fill").font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(HUDColor.accent)
                 } else if mode == .ask {
@@ -157,7 +168,11 @@ struct HUDView: View {
         case .working(let mode):
             HStack(spacing: 12) {
                 ThinkingDots()
-                Text(mode == .ask ? "Thinking" : "Transcribing")
+                if mode == .message {
+                    Image(systemName: "text.bubble.fill").font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(HUDColor.messageAccent)
+                }
+                Text(mode == .ask ? "Thinking" : mode == .message ? "Tidying your message" : "Transcribing")
                     .font(GoogleSans.font(14, 500))
                     .foregroundStyle(HUDColor.text)
             }
@@ -197,12 +212,27 @@ struct HUDView: View {
     }
 
     private var hint: some View {
-        Text("Tap \(hintKey.symbol) to finish   ·   esc to cancel")
+        Text(isMessage ? "Message mode   ·   tap \(hintKey.symbol) to finish   ·   esc to cancel"
+                       : "Tap \(hintKey.symbol) to finish   ·   esc to cancel")
             .font(GoogleSans.font(12, 500))
             .foregroundStyle(HUDColor.text.opacity(0.85))
             .padding(.horizontal, 12)
             .frame(height: 26)
             .background(Capsule().fill(HUDColor.pill.opacity(0.9)))
+    }
+}
+
+/// "Message" chip at the start of the pill in message mode.
+private struct MessageBadge: View {
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "text.bubble.fill").font(.system(size: 12, weight: .semibold))
+            Text("Message").font(GoogleSans.font(13, 600))
+        }
+        .foregroundStyle(HUDColor.onMessageChip)
+        .padding(.horizontal, 10)
+        .frame(height: 28)
+        .background(Capsule().fill(HUDColor.messageChip))
     }
 }
 
@@ -317,6 +347,12 @@ enum HUDColor {
     static let success   = Color(light: 0xC4EED0, dark: 0x6DD58C)
     static let onSuccess = Color(light: 0x146C2E, dark: 0x0F5223)
     static let warning   = Color(light: 0x8C4F00, dark: 0xFDD663)
+    /// Message mode: Bartley's teal scheme.
+    static let messagePill   = Color(light: 0xF0FAF9, dark: 0x122423)
+    static let messageEdge   = Color(light: 0x80CFCD, dark: 0x2E6766)
+    static let messageAccent = Color(light: 0x00696A, dark: 0x80D4D5)
+    static let messageChip   = Color(light: 0x9CF1EF, dark: 0x004F50)
+    static let onMessageChip = Color(light: 0x002020, dark: 0x9CF1F1)
     /// Ask AI's sparkle: the site's glow pastels on dark, the brand colours at full strength on light.
     static let glow: [Color] = [(0xD1643B, 0xFFB59A), (0xB76E88, 0xF5A3BF), (0x9277BB, 0xC6A9F1), (0x4C8F85, 0x8FD3C7)]
         .map { Color(light: $0.0, dark: $0.1) }

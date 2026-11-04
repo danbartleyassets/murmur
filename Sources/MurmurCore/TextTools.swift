@@ -104,3 +104,34 @@ public enum Spacing {
         return " " + text
     }
 }
+
+/// Message mode's first pass: the spoken tics that are never meant, removed by rule
+/// before the language model tidies the rest. Also the fallback when Apple
+/// Intelligence is off.
+public enum Fillers {
+    private static let rules: [(String, String)] = [
+        ("(?i),?[ \\t]*\\b(um+|uh+|erm+|er|ah|hmm+|mm+)\\b[,.]?", ""),                      // vocal fillers
+        ("(?i)\\b(\\w+(?:[ \\t]+\\w+){0,2})[ \\t]+\\1\\b", "$1"),                         // "the the", "can you can you"
+        ("(?i)(^|[.!?]\\s+)(yeah|okay|ok|right|so|well),?[ \\t]+(so[ \\t]+|basically[ \\t]+)?", "$1"), // opening throat-clearing
+        ("(?i),?[ \\t]*\\byou know\\b,?(?=[ \\t]*(?:[.!?,]|and\\b|but\\b|so\\b|or\\b|$))", ""),
+        ("(?i)\\bbasically\\b,?[ \\t]*", ""),
+        ("(?i),?[ \\t]*\\bI mean\\b,?", "")
+    ]
+
+    public static func strip(_ text: String) -> String {
+        var t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        for (pattern, template) in rules {
+            t = t.replacingOccurrences(of: pattern, with: template, options: .regularExpression)
+        }
+        t = t.replacingOccurrences(of: "[ \\t]{2,}", with: " ", options: .regularExpression)
+        t = t.replacingOccurrences(of: "[ \\t]+([,.!?])", with: "$1", options: .regularExpression)
+        t = t.replacingOccurrences(of: "(?m)^[ \\t,]+", with: "", options: .regularExpression)
+        t = t.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Removing an opening "So" leaves the next sentence lower-case.
+        let starts = try! NSRegularExpression(pattern: "(^|[.!?]\\s+)([a-z])")
+        for match in starts.matches(in: t, range: NSRange(t.startIndex..., in: t)).reversed() {
+            if let r = Range(match.range(at: 2), in: t) { t.replaceSubrange(r, with: t[r].uppercased()) }
+        }
+        return t
+    }
+}

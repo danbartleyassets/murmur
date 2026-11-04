@@ -113,6 +113,7 @@ final class AppState: ObservableObject {
         switch action {
         case .startRecording: beginRecording(mode)
         case .lock: lock()
+        case .message: enterMessageMode()
         case .finish: finishRecording()
         case .discard: cancelRecording(quietly: true)
         case .none: break
@@ -200,10 +201,21 @@ final class AppState: ObservableObject {
         Sounds.play(.lock)
     }
 
+    /// A fourth tap: the same hands-free recording, tidied into a message at the end.
+    private func enterMessageMode() {
+        guard phase == .listening, mode == .dictate else { return }
+        mode = .message
+        locked = true
+        if case .recording(_, _, let started) = hud.content {
+            hud.show(.recording(mode: .message, locked: true, started: started))
+        }
+        Sounds.play(.message)
+    }
+
     /// The HUD's lock button.
     func lockFromHUD() {
         guard phase == .listening else { return }
-        keys.forceLock(mode)
+        keys.forceLock(mode == .message ? .dictate : mode)
         lock()
     }
 
@@ -283,6 +295,13 @@ final class AppState: ObservableObject {
                 hud.show(.message(symbol: "sparkles", title: "No answer", detail: "Apple Intelligence didn't respond", tone: .warning), autoHide: 2.5)
                 return
             }
+        } else if mode == .message {
+            let spoken = Fillers.strip(settings.commandsEnabled ? Commands.applyInline(corrected) : corrected)
+            phase = .thinking
+            hud.show(.working(mode: .message))
+            let tidied = await MessageTidy.tidy(spoken)
+            guard !Task.isCancelled else { return }
+            text = tidied ?? spoken
         } else {
             text = settings.commandsEnabled ? Commands.applyInline(corrected) : corrected
         }

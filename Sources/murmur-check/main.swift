@@ -43,6 +43,23 @@ do {
     check(g.triggerUp(at: 9.1) == .finish, "tap while locked: release finishes")
 }
 do {
+    let r = run([("d", 0), ("u", 0.1), ("d", 0.25), ("u", 0.33), ("d", 0.45), ("u", 0.55), ("d", 0.7), ("u", 0.8)])
+    check(r.actions == [.startRecording, .lock, .message], "four taps switch to message mode")
+    check(r.gesture.state == .locked, "message mode is hands-free")
+    var g = r.gesture
+    check(g.triggerDown(at: 9.0) == .none && g.triggerUp(at: 9.1) == .finish, "tap finishes the message")
+}
+do {
+    let r = run([("d", 0), ("u", 0.1), ("d", 0.25), ("u", 0.33), ("d", 0.45), ("u", 0.55), ("d", 0.7), ("u", 3.0)])
+    check(r.actions == [.startRecording, .lock, .message, .finish], "four taps, last held: message push-to-talk")
+}
+do {
+    let r = run([("d", 0), ("u", 0.1), ("d", 0.25), ("u", 0.33), ("d", 0.45), ("u", 0.55), ("t", 2.0)])
+    check(r.gesture.state == .locked, "triple-tap settles into plain hands-free")
+    var g = r.gesture
+    check(g.triggerDown(at: 9.0) == .none && g.triggerUp(at: 9.1) == .finish, "later tap still finishes")
+}
+do {
     let r = run([("d", 0), ("u", 0.1), ("d", 0.25), ("u", 0.33), ("t", 1.0)])
     check(r.actions == [.startRecording, .discard], "quick double-tap with no third tap is discarded")
 }
@@ -95,6 +112,13 @@ check(Spacing.join(previous: nil, text: "Next") == "Next", "unknown context adds
 check(NonSpeech.strip("[BLANK_AUDIO] Hello (upbeat music) there") == "Hello there", "strip non-speech")
 check(Hallucination.isLikely("Thank you.", voicedSeconds: 0.1), "silent 'Thank you.' is dropped")
 check(!Hallucination.isLikely("Thank you.", voicedSeconds: 0.7), "spoken 'Thank you.' is kept")
+
+print("Fillers")
+check(Fillers.strip("um hey Jack so the the container is uh late") == "Hey Jack so the container is late", "vocal fillers and repeats")
+check(Fillers.strip("Yeah so basically I had a look. So can you can you redo it") == "I had a look. Can you redo it", "opening throat-clearing")
+check(Fillers.strip("it's too dark you know and the walnut") == "It's too dark and the walnut", "you know as a tic")
+check(Fillers.strip("do you know the guy") == "Do you know the guy", "you know with meaning is kept")
+check(Fillers.strip("I like it\n\nSecond point") == "I like it\n\nSecond point", "keeps paragraph breaks and 'like'")
 
 print("Sounds like")
 let terms = ["Acupanel", "Kasaro", "Mulgrave", "WVH"]
