@@ -63,6 +63,7 @@ enum TextInserter {
         // Nothing that takes text has focus: leave it on the clipboard instead of
         // pasting into the void.
         if context.isClearlyNotText {
+            Log.app.notice("No text field (focus role \(context.role ?? "none", privacy: .public)); copied only")
             setClipboard(final, transient: false)
             return .copiedOnly
         }
@@ -77,18 +78,36 @@ enum TextInserter {
 
     // MARK: Paste, then put the previous clipboard back
 
+    /// How long the dictation stays on the clipboard, so a paste that didn't land
+    /// can still be done by hand with ⌘V.
+    private static let holdOnClipboard: TimeInterval = 10
+    /// The clipboard from before the first of a run of dictations, waiting to go back.
+    private static var pendingRestore: (saved: [[NSPasteboard.PasteboardType: Data]], work: DispatchWorkItem)?
+
     private static func paste(_ text: String) {
         let pb = NSPasteboard.general
-        let saved = snapshot(pb)
+        // A second dictation inside the hold window must put back the user's own
+        // clipboard, not the first dictation.
+        let saved: [[NSPasteboard.PasteboardType: Data]]
+        if let pending = pendingRestore {
+            pending.work.cancel()
+            saved = pending.saved
+        } else {
+            saved = snapshot(pb)
+        }
         setClipboard(text, transient: true)
         let ours = pb.changeCount
-        postCommandV()
-        // Slow apps (Electron) read the pasteboard late, so give them time. Only
-        // restore if nobody has copied anything new in the meantime.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        // Give the pasteboard a moment to settle before the target app reads it.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { postCommandV() }
+        let work = DispatchWorkItem {
+            pendingRestore = nil
+            // Only restore if nobody has copied anything new in the meantime.
             guard pb.changeCount == ours else { return }
             restore(saved, to: pb)
         }
+        pendingRestore = (saved, work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + holdOnClipboard, execute: work)
+        Log.app.notice("Pasted \(text.count) characters; clipboard restores in \(Int(holdOnClipboard))s")
     }
 
     private static func setClipboard(_ text: String, transient: Bool) {
@@ -120,15 +139,24 @@ enum TextInserter {
         pb.writeObjects(items)
     }
 
+    /// A full ⌘ down, V down, V up, ⌘ up. Some apps (Chrome, Electron) ignore a bare
+    /// V that only carries the Command flag, and a private source keeps any key
+    /// still physically held (the Shift trigger) out of the shortcut.
     private static func postCommandV() {
-        let source = CGEventSource(stateID: .combinedSessionState)
+        let source = CGEventSource(stateID: .privateState)
+        let command: CGKeyCode = 0x37
         let v: CGKeyCode = 0x09
-        let down = CGEvent(keyboardEventSource: source, virtualKey: v, keyDown: true)
-        let up = CGEvent(keyboardEventSource: source, virtualKey: v, keyDown: false)
-        down?.flags = .maskCommand
-        up?.flags = .maskCommand
-        down?.post(tap: .cghidEventTap)
-        up?.post(tap: .cghidEventTap)
+        let events: [(CGKeyCode, Bool, CGEventFlags)] = [
+            (command, true, .maskCommand),
+            (v, true, .maskCommand),
+            (v, false, .maskCommand),
+            (command, false, [])
+        ]
+        for (key, down, flags) in events {
+            guard let event = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: down) else { continue }
+            event.flags = flags
+            event.post(tap: .cghidEventTap)
+        }
     }
 
     // MARK: Type (for apps that block paste)

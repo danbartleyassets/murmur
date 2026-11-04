@@ -648,7 +648,7 @@ private struct DictationPage: View {
                     }
                     RowDivider(inset: 64)
                     ListRow(symbol: "keyboard", title: "Insert text by",
-                            detail: settings.insertion == .paste ? "Fast. Your clipboard is put back afterwards." : "Slower, for apps that block pasting.") {
+                            detail: settings.insertion == .paste ? "Fast. Your words stay on the clipboard for 10 seconds, then it goes back to what you had." : "Slower, for apps that block pasting.") {
                         SegmentedButtons(options: [(InsertionMethod.paste, "Pasting"), (.type, "Typing")],
                                          selection: $settings.insertion)
                             .frame(width: 220)
