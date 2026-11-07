@@ -9,5 +9,6 @@ enum AppIconManager {
               let image = NSImage(contentsOf: url) else { return }
 
         NSApp.applicationIconImage = image
+        NSApp.dockTile.display()
     }
 }

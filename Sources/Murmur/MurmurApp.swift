@@ -117,6 +117,12 @@ final class WindowManager: NSObject, NSWindowDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
+
+        // Changing from a menu-bar app to a regular app creates a fresh Dock tile.
+        // Reapply the user's icon on the next run loop after that tile exists.
+        DispatchQueue.main.async {
+            AppIconManager.apply(SettingsStore.shared.appIcon)
+        }
     }
 
     private func build() {
