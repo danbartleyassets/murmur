@@ -86,7 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         MainActor.assumeIsolated {
             SettingsStore.shared.appearance.apply()
-            AppIconManager.apply(SettingsStore.shared.appIcon)
+            AppIconManager.shared.start()
             if DevHooks.runIfRequested() { return }
             AppState.shared.start()
             let needsSetup = !Permissions.microphoneGranted || !Permissions.accessibilityGranted
@@ -100,7 +100,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        MainActor.assumeIsolated { AppState.shared.stop() }
+        MainActor.assumeIsolated {
+            AppIconManager.shared.stop()
+            AppState.shared.stop()
+        }
     }
 }
 
@@ -119,9 +122,9 @@ final class WindowManager: NSObject, NSWindowDelegate {
         window?.makeKeyAndOrderFront(nil)
 
         // Changing from a menu-bar app to a regular app creates a fresh Dock tile.
-        // Reapply the user's icon on the next run loop after that tile exists.
+        // Reapply the system-selected icon on the next run loop after it exists.
         DispatchQueue.main.async {
-            AppIconManager.apply(SettingsStore.shared.appIcon)
+            AppIconManager.shared.refreshDockTile()
         }
     }
 

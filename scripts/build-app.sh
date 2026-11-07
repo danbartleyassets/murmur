@@ -18,8 +18,13 @@ rm -rf "${APP}"
 mkdir -p "${APP}/Contents/MacOS" "${APP}/Contents/Resources/Fonts"
 
 cp "${BIN}/Murmur" "${APP}/Contents/MacOS/${APP_NAME}"
-cp assets/AppIcon.icns "${APP}/Contents/Resources/AppIcon.icns"
-cp assets/AppIconDark.icns "${APP}/Contents/Resources/AppIconDark.icns"
+ICON_THEME="$(defaults read -g AppleIconAppearanceTheme 2>/dev/null || true)"
+if [[ "${ICON_THEME}" == *Dark* ]]; then
+  cp assets/AppIconSystemDark.icns "${APP}/Contents/Resources/AppIcon.icns"
+else
+  cp assets/AppIconSystemLight.icns "${APP}/Contents/Resources/AppIcon.icns"
+fi
+cp assets/AppIconSystemLight.png assets/AppIconSystemDark.png "${APP}/Contents/Resources/"
 cp assets/fonts/GoogleSansFlex.ttf assets/fonts/OFL.txt "${APP}/Contents/Resources/Fonts/"
 
 # SwiftPM resource bundles from dependencies, if any, go in Resources.

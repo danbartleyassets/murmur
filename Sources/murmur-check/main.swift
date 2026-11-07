@@ -113,6 +113,12 @@ check(NonSpeech.strip("[BLANK_AUDIO] Hello (upbeat music) there") == "Hello ther
 check(Hallucination.isLikely("Thank you.", voicedSeconds: 0.1), "silent 'Thank you.' is dropped")
 check(!Hallucination.isLikely("Thank you.", voicedSeconds: 0.7), "spoken 'Thank you.' is kept")
 
+print("Icon appearance")
+check(IconAppearance.usesDarkIcons(iconTheme: "RegularDark", interfaceStyle: nil), "macOS dark icon theme")
+check(IconAppearance.usesDarkIcons(iconTheme: "TintedDark", interfaceStyle: nil), "future dark icon variant")
+check(!IconAppearance.usesDarkIcons(iconTheme: "Regular", interfaceStyle: "Dark"), "icon theme wins over interface")
+check(IconAppearance.usesDarkIcons(iconTheme: nil, interfaceStyle: "Dark"), "interface fallback")
+
 print("Fillers")
 check(Fillers.strip("um hey Jack so the the container is uh late") == "Hey Jack so the container is late", "vocal fillers and repeats")
 check(Fillers.strip("Yeah so basically I had a look. So can you can you redo it") == "I had a look. Can you redo it", "opening throat-clearing")
