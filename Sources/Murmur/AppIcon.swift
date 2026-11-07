@@ -44,11 +44,56 @@ final class AppIconManager {
 
         let resource = dark ? "AppIconSystemDark" : "AppIconSystemLight"
         guard let url = Bundle.main.url(forResource: resource, withExtension: "png"),
-              let image = NSImage(contentsOf: url) else { return }
+              let image = NSImage(contentsOf: url),
+              let dockImage = Self.dockSizedImage(from: image) else { return }
 
-        NSApp.applicationIconImage = image
+        NSApp.applicationIconImage = dockImage
         NSApp.dockTile.display()
         lastAppliedDark = dark
+    }
+
+    /// Icon Composer exports the complete rounded tile edge-to-edge. That is
+    /// correct for an asset catalog, but `applicationIconImage` bypasses the
+    /// system's normal macOS icon-grid inset. Centre the tile on Apple's
+    /// 824-by-824 optical canvas so it matches neighbouring Dock icons.
+    private static func dockSizedImage(from source: NSImage) -> NSImage? {
+        let canvasPixels = 1024
+        let iconPixels = 824
+        let inset = (canvasPixels - iconPixels) / 2
+
+        guard let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: canvasPixels,
+            pixelsHigh: canvasPixels,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else { return nil }
+
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+
+        guard let context = NSGraphicsContext(bitmapImageRep: bitmap) else {
+            return nil
+        }
+        NSGraphicsContext.current = context
+        context.imageInterpolation = .high
+        NSColor.clear.setFill()
+        NSRect(x: 0, y: 0, width: canvasPixels, height: canvasPixels).fill()
+        source.draw(
+            in: NSRect(x: inset, y: inset, width: iconPixels, height: iconPixels),
+            from: NSRect(origin: .zero, size: source.size),
+            operation: .sourceOver,
+            fraction: 1
+        )
+
+        let image = NSImage(size: NSSize(width: canvasPixels, height: canvasPixels))
+        image.addRepresentation(bitmap)
+        return image
     }
 
     private static var systemUsesDarkIcons: Bool {
