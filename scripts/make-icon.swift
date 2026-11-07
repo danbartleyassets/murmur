@@ -1,10 +1,11 @@
 import AppKit
 
-// Murmur's app icon: four rounded bars in Bartley's colours on a white tile.
+// Murmur's app icon: four rounded bars in Bartley's colours on a light or dark tile.
 // Follows the macOS icon grid (824 pt tile on a 1024 pt canvas, with shadow).
-// Usage: swift scripts/make-icon.swift assets/AppIcon.iconset
+// Usage: swift scripts/make-icon.swift assets/AppIcon.iconset [light|dark] [output.icns]
 
 let outDir = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "AppIcon.iconset"
+let dark = CommandLine.arguments.count > 2 && CommandLine.arguments[2] == "dark"
 try? FileManager.default.createDirectory(atPath: outDir, withIntermediateDirectories: true)
 
 func color(_ hex: UInt32, _ a: CGFloat = 1) -> CGColor {
@@ -27,19 +28,21 @@ func draw(_ px: Int) -> NSBitmapImageRep {
     let path = CGPath(roundedRect: tile, cornerWidth: 186, cornerHeight: 186, transform: nil)
     ctx.saveGState()
     ctx.setShadow(offset: CGSize(width: 0, height: -10), blur: 28, color: color(0x000000, 0.28))
-    ctx.addPath(path); ctx.setFillColor(color(0xFFFFFF)); ctx.fillPath()
+    ctx.addPath(path); ctx.setFillColor(color(dark ? 0x1C1C1E : 0xFFFFFF)); ctx.fillPath()
     ctx.restoreGState()
 
-    ctx.saveGState()
-    ctx.addPath(path); ctx.clip()
-    let bg = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: [color(0xFFFFFF), color(0xF7EBE5)] as CFArray,
-                        locations: [0, 1])!
-    ctx.drawLinearGradient(bg, start: CGPoint(x: 512, y: 924), end: CGPoint(x: 512, y: 100), options: [])
-    ctx.restoreGState()
+    if !dark {
+        ctx.saveGState()
+        ctx.addPath(path); ctx.clip()
+        let bg = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: [color(0xFFFFFF), color(0xF7EBE5)] as CFArray,
+                            locations: [0, 1])!
+        ctx.drawLinearGradient(bg, start: CGPoint(x: 512, y: 924), end: CGPoint(x: 512, y: 100), options: [])
+        ctx.restoreGState()
+    }
 
-    // Hairline edge so the tile holds its shape on a light Dock.
+    // Hairline edge so the tile holds its shape against either Dock appearance.
     ctx.addPath(CGPath(roundedRect: tile.insetBy(dx: 1, dy: 1), cornerWidth: 185, cornerHeight: 185, transform: nil))
-    ctx.setStrokeColor(color(0x000000, 0.06)); ctx.setLineWidth(2); ctx.strokePath()
+    ctx.setStrokeColor(color(dark ? 0xFFFFFF : 0x000000, dark ? 0.12 : 0.06)); ctx.setLineWidth(2); ctx.strokePath()
 
     // Four bars, centred.
     let colors: [UInt32] = [0xD1643B, 0xB76E88, 0x9277BB, 0x4C8F85]
@@ -69,3 +72,40 @@ for (name, px) in sizes {
     try! data.write(to: URL(fileURLWithPath: "\(outDir)/\(name).png"))
 }
 print("Wrote \(sizes.count) icons to \(outDir)")
+
+// iconutil is unreliable with generated iconsets on some Command Line Tools releases,
+// so optionally write the straightforward PNG-backed ICNS container ourselves.
+if CommandLine.arguments.count > 3 {
+    let icnsPath = CommandLine.arguments[3]
+    let chunks: [(String, String)] = [
+        ("ic04", "icon_16x16.png"),
+        ("ic05", "icon_32x32.png"),
+        ("ic11", "icon_16x16@2x.png"),
+        ("ic12", "icon_32x32@2x.png"),
+        ("ic07", "icon_128x128.png"),
+        ("ic08", "icon_256x256.png"),
+        ("ic13", "icon_128x128@2x.png"),
+        ("ic09", "icon_512x512.png"),
+        ("ic14", "icon_256x256@2x.png"),
+        ("ic10", "icon_512x512@2x.png")
+    ]
+
+    func appendUInt32(_ value: Int, to data: inout Data) {
+        var bigEndian = UInt32(value).bigEndian
+        withUnsafeBytes(of: &bigEndian) { data.append(contentsOf: $0) }
+    }
+
+    var body = Data()
+    for (type, file) in chunks {
+        let png = try! Data(contentsOf: URL(fileURLWithPath: "\(outDir)/\(file)"))
+        body.append(contentsOf: type.utf8)
+        appendUInt32(png.count + 8, to: &body)
+        body.append(png)
+    }
+
+    var icns = Data("icns".utf8)
+    appendUInt32(body.count + 8, to: &icns)
+    icns.append(body)
+    try! icns.write(to: URL(fileURLWithPath: icnsPath))
+    print("Wrote \(icnsPath)")
+}

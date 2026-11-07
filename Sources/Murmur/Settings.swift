@@ -39,6 +39,11 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum AppIconMode: String, CaseIterable, Identifiable {
+    case light, dark
+    var id: String { rawValue }
+}
+
 enum InsertionMethod: String, CaseIterable, Identifiable {
     case paste, type
     var id: String { rawValue }
@@ -91,6 +96,7 @@ final class SettingsStore: ObservableObject {
     @Published var soundsEnabled: Bool { didSet { d.set(soundsEnabled, forKey: "soundsEnabled") } }
     @Published var keepHistory: Bool { didSet { d.set(keepHistory, forKey: "keepHistory") } }
     @Published var appearance: AppearanceMode { didSet { d.set(appearance.rawValue, forKey: "appearance") } }
+    @Published var appIcon: AppIconMode { didSet { d.set(appIcon.rawValue, forKey: "appIcon") } }
 
     private init() {
         enabled = d.object(forKey: "enabled") as? Bool ?? true
@@ -106,6 +112,7 @@ final class SettingsStore: ObservableObject {
         soundsEnabled = d.object(forKey: "soundsEnabled") as? Bool ?? true
         keepHistory = d.object(forKey: "keepHistory") as? Bool ?? true
         appearance = AppearanceMode(rawValue: d.string(forKey: "appearance") ?? "") ?? .light
+        appIcon = AppIconMode(rawValue: d.string(forKey: "appIcon") ?? "") ?? .light
     }
 
     var resolvedLanguage: String? {

@@ -550,6 +550,16 @@ private struct GeneralPage: View {
                 SegmentedButtons(options: [(AppearanceMode.light, "Light"), (.dark, "Dark"), (.system, "Match Mac")],
                                  selection: $settings.appearance)
                     .onChange(of: settings.appearance) { _, new in new.apply() }
+
+                RowDivider(inset: 0).padding(.vertical, 18)
+
+                SectionTitle(text: "App icon").padding(.bottom, 4)
+                Text("Choose the icon shown in the Dock and app switcher.")
+                    .font(GoogleSans.bodySmall).foregroundStyle(M3.onSurfaceVariant)
+                    .padding(.bottom, 14)
+                SegmentedButtons(options: [(AppIconMode.light, "Light"), (.dark, "Dark")],
+                                 selection: $settings.appIcon)
+                    .onChange(of: settings.appIcon) { _, new in AppIconManager.apply(new) }
             }
 
             Card(padding: 8) {

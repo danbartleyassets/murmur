@@ -86,6 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         MainActor.assumeIsolated {
             SettingsStore.shared.appearance.apply()
+            AppIconManager.apply(SettingsStore.shared.appIcon)
             if DevHooks.runIfRequested() { return }
             AppState.shared.start()
             let needsSetup = !Permissions.microphoneGranted || !Permissions.accessibilityGranted
