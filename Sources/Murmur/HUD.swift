@@ -334,16 +334,17 @@ struct ThinkingDots: View {
 }
 
 /// The pill's colours: Bartley's rust scheme, light or dark with the app's Appearance setting.
+/// Dark is neutral off-black with the rust accent, like the window.
 enum HUDColor {
-    static let pill      = Color(light: 0xFFFFFF, dark: 0x1F1714)
-    static let edge      = Color(light: 0xEBDFD9, dark: 0x3A302C)
+    static let pill      = Color(light: 0xFFFFFF, dark: 0x1E1E1E)
+    static let edge      = Color(light: 0xEBDFD9, dark: 0x363636)
     static let shadow    = Color(nsColor: NSColor(name: nil) { a in
         NSColor.black.withAlphaComponent(a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? 0.32 : 0.16)
     })
-    static let text      = Color(light: 0x231A16, dark: 0xF1DFD8)
-    static let textMuted = Color(light: 0x53443E, dark: 0xD4C0B8)
-    static let accent    = Color(light: 0xA8461F, dark: 0xFFB59A)
-    static let onAccent  = Color(light: 0xFFFFFF, dark: 0x5A1B00)
+    static let text      = Color(light: 0x231A16, dark: 0xECECEC)
+    static let textMuted = Color(light: 0x53443E, dark: 0xB3B3B3)
+    static let accent    = Color(light: 0xA8461F, dark: 0xEF8B63)
+    static let onAccent  = Color(light: 0xFFFFFF, dark: 0x200B03)
     static let success   = Color(light: 0xC4EED0, dark: 0x6DD58C)
     static let onSuccess = Color(light: 0x146C2E, dark: 0x0F5223)
     static let warning   = Color(light: 0x8C4F00, dark: 0xFDD663)
