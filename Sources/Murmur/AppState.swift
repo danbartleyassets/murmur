@@ -12,7 +12,9 @@ enum Phase: Equatable {
 final class AppState: ObservableObject {
     static let shared = AppState()
 
-    @Published private(set) var phase: Phase = .idle
+    @Published private(set) var phase: Phase = .idle {
+        didSet { keys.swallowEscape = phase != .idle }
+    }
     @Published private(set) var mode: CaptureMode = .dictate
     @Published private(set) var locked = false
     @Published private(set) var model: ModelStatus = .idle
@@ -33,6 +35,8 @@ final class AppState: ObservableObject {
     private var stream: AsyncStream<[Float]>.Continuation?
     private var streamTask: Task<String, Never>?
     private var workTask: Task<Void, Never>?
+    /// The chunked transcription feeding `workTask`, kept so Esc can stop WhisperKit too.
+    private var transcription: Task<String, Never>?
     private var safetyTimer: Timer?
     private var permissionTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -47,8 +51,17 @@ final class AppState: ObservableObject {
     // MARK: Lifecycle
 
     func start() {
+        recorder.onCaptureLost = { [weak self] in
+            guard let self, self.phase == .listening else { return }
+            self.finishRecording()
+        }
+        recorder.onStartFailed = { [weak self] failure in
+            guard let self, self.phase == .listening else { return }
+            self.cancelRecording(quietly: true)
+            self.showMicFailure(failure)
+        }
         keys.onAction = { [weak self] mode, action in self?.handle(action, mode: mode) }
-        keys.onEscape = { [weak self] in self?.escapePressed() ?? false }
+        keys.onEscape = { [weak self] in self?.escapePressed() }
         keys.onTriggerChange = { [weak self] mode, down in
             guard let self else { return }
             if down { self.heldKey = mode } else if self.heldKey == mode { self.heldKey = nil }
@@ -66,6 +79,11 @@ final class AppState: ObservableObject {
             .sink { [weak self] _ in self?.reloadModel() }
             .store(in: &cancellables)
 
+        AudioDeviceCache.shared.start()
+        AudioDeviceCache.shared.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in DispatchQueue.main.async { self?.refreshPermissions() } }
+            .store(in: &cancellables)
         refreshPermissions()
         permissionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshPermissions() }
@@ -80,8 +98,9 @@ final class AppState: ObservableObject {
     }
 
     func refreshPermissions() {
-        micGranted = Permissions.microphoneGranted
-        let device = AudioDevices.resolve(uid: settings.inputDeviceUID)?.name
+        let mic = Permissions.microphoneGranted
+        if mic != micGranted { micGranted = mic }
+        let device = AudioDeviceCache.shared.resolve(uid: settings.inputDeviceUID)?.name
         if device != inputDeviceName { inputDeviceName = device }
         let ax = Permissions.accessibilityGranted
         if ax != accessibilityGranted { accessibilityGranted = ax }
@@ -120,19 +139,19 @@ final class AppState: ObservableObject {
         }
     }
 
-    private func escapePressed() -> Bool {
+    private func escapePressed() {
         switch phase {
         case .listening:
             cancelRecording(quietly: false)
-            return true
         case .transcribing, .thinking:
             workTask?.cancel()
             workTask = nil
+            transcription?.cancel()
+            transcription = nil
             phase = .idle
             hud.show(.message(symbol: "xmark", title: "Cancelled", detail: nil, tone: .neutral), autoHide: 1.0)
-            return true
         case .idle:
-            return false
+            break
         }
     }
 
@@ -140,7 +159,14 @@ final class AppState: ObservableObject {
 
     private func beginRecording(_ mode: CaptureMode) {
         Log.app.info("Start requested: enabled=\(self.settings.enabled) phase=\(String(describing: self.phase), privacy: .public) model=\(String(describing: self.model), privacy: .public) mic=\(self.micGranted)")
-        guard settings.enabled, phase == .idle else { keys.reset(); return }
+        guard settings.enabled, phase == .idle else {
+            keys.reset()
+            if phase == .transcribing || phase == .thinking {
+                hud.show(.message(symbol: "hourglass", title: "Still working on the last one",
+                                  detail: "Press esc to cancel it", tone: .neutral), autoHide: 2.5)
+            }
+            return
+        }
         guard model.isReady else {
             keys.reset()
             hud.show(.message(symbol: "hourglass", title: modelWaitTitle, detail: modelWaitDetail, tone: .warning), autoHide: 3.5)
@@ -165,20 +191,18 @@ final class AppState: ObservableObject {
         streamTask = Task { [transcriber] in
             var parts: [String] = []
             for await chunk in chunks {
+                if Task.isCancelled { break }
                 guard chunk.count >= 16_000 / 4 else { continue }
                 let text = await transcriber.transcribe(chunk, language: language)
                 if !text.isEmpty { parts.append(text) }
             }
             return parts.joined(separator: " ")
         }
-        recorder.onChunk = { chunk in continuation.yield(chunk) }
-
-        guard recorder.start(deviceUID: settings.inputDeviceUID) else {
-            Log.app.error("Recorder failed to start (no input device?)")
+        guard recorder.start(deviceUID: settings.inputDeviceUID, onChunk: { continuation.yield($0) }) else {
+            Log.app.error("Recorder failed to start: \(String(describing: self.recorder.lastFailure), privacy: .public)")
             continuation.finish(); stream = nil; streamTask = nil
             keys.reset()
-            hud.show(.message(symbol: "mic.slash", title: "No microphone connected",
-                              detail: "Connect AirPods, a headset or a USB mic", tone: .warning), autoHide: 4)
+            showMicFailure(recorder.lastFailure)
             return
         }
 
@@ -189,6 +213,20 @@ final class AppState: ObservableObject {
         Sounds.play(.start)
         safetyTimer = Timer.scheduledTimer(withTimeInterval: maxRecordingSeconds, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated { self?.finishRecording() }
+        }
+    }
+
+    private func showMicFailure(_ failure: AudioRecorder.Failure?) {
+        switch failure {
+        case .notResponding:
+            hud.show(.message(symbol: "mic.slash", title: "Microphone isn't responding",
+                              detail: "Pick another mic in Settings, or reconnect this one", tone: .warning), autoHide: 5)
+        case .failed:
+            hud.show(.message(symbol: "mic.slash", title: "Couldn't start the microphone",
+                              detail: "Try again, or pick another mic in Settings", tone: .warning), autoHide: 4)
+        case .noDevice, nil:
+            hud.show(.message(symbol: "mic.slash", title: "No microphone connected",
+                              detail: "Connect AirPods, a headset or a USB mic", tone: .warning), autoHide: 4)
         }
     }
 
@@ -244,6 +282,7 @@ final class AppState: ObservableObject {
         let mode = self.mode
         let task = streamTask
         streamTask = nil
+        transcription = task
         workTask = Task { [weak self] in
             let raw = (await task?.value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             guard !Task.isCancelled else { return }
@@ -288,7 +327,7 @@ final class AppState: ObservableObject {
         if mode == .ask {
             phase = .thinking
             hud.show(.working(mode: .ask))
-            text = await AskAI.respond(to: corrected)
+            text = await withTimeout(30) { await AskAI.respond(to: corrected) } ?? ""
             guard !Task.isCancelled else { return }
             if text.isEmpty {
                 phase = .idle
@@ -299,14 +338,15 @@ final class AppState: ObservableObject {
             let spoken = Fillers.strip(settings.commandsEnabled ? Commands.applyInline(corrected) : corrected)
             phase = .thinking
             hud.show(.working(mode: .message))
-            let tidied = await MessageTidy.tidy(spoken)
+            let tidied = await withTimeout(20) { await MessageTidy.tidy(spoken) } ?? nil
             guard !Task.isCancelled else { return }
             text = tidied ?? spoken
         } else {
             text = settings.commandsEnabled ? Commands.applyInline(corrected) : corrected
         }
 
-        let outcome = TextInserter.insert(text, method: settings.insertion, smartSpacing: settings.smartSpacing)
+        let outcome = await TextInserter.insert(text, method: settings.insertion, smartSpacing: settings.smartSpacing)
+        guard !Task.isCancelled else { return }
         lastText = text
         History.shared.add(text)
         phase = .idle

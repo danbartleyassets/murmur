@@ -74,3 +74,52 @@ enum AudioDevices {
         return value.takeRetainedValue() as String
     }
 }
+
+/// The microphone list, kept current from Core Audio's change notifications on a
+/// background queue. A misbehaving device (an iPhone mic dropping off Continuity)
+/// can leave Core Audio calls hanging, so the main thread only ever reads this
+/// cache and never asks Core Audio itself.
+final class AudioDeviceCache: ObservableObject, @unchecked Sendable {
+    static let shared = AudioDeviceCache()
+
+    @Published private(set) var inputs: [AudioInputDevice] = []
+    @Published private(set) var defaultInput: AudioInputDevice?
+    /// False until the first background scan has landed.
+    @Published private(set) var hasScanned = false
+
+    private let queue = DispatchQueue(label: "com.danbartley.murmur.audio-devices", qos: .utility)
+    private var started = false
+
+    @MainActor
+    func start() {
+        guard !started else { return }
+        started = true
+        for selector in [kAudioHardwarePropertyDevices, kAudioHardwarePropertyDefaultInputDevice] {
+            var addr = AudioObjectPropertyAddress(mSelector: selector,
+                                                  mScope: kAudioObjectPropertyScopeGlobal,
+                                                  mElement: kAudioObjectPropertyElementMain)
+            AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &addr, queue) { [weak self] _, _ in
+                self?.refresh()
+            }
+        }
+        queue.async { [weak self] in self?.refresh() }
+    }
+
+    /// Runs on `queue`. If Core Audio hangs here, only this queue waits.
+    private func refresh() {
+        let inputs = AudioDevices.inputs()
+        let fallback = AudioDevices.defaultInput()
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if self.inputs != inputs { self.inputs = inputs }
+            if self.defaultInput != fallback { self.defaultInput = fallback }
+            if !self.hasScanned { self.hasScanned = true }
+        }
+    }
+
+    /// The device that will actually be used for a given setting.
+    func resolve(uid: String) -> AudioInputDevice? {
+        if !uid.isEmpty, let d = inputs.first(where: { $0.uid == uid }) { return d }
+        return defaultInput
+    }
+}

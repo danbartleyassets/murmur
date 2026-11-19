@@ -49,8 +49,10 @@ enum ModelStatus: Equatable {
     var isReady: Bool { self == .ready }
 }
 
-/// Local, on-device transcription with WhisperKit on the Neural Engine.
-final class Transcriber {
+/// Local, on-device transcription with WhisperKit on the Neural Engine. An actor,
+/// so a load can't swap the model out from under a transcription and two
+/// dictations never run through WhisperKit at once.
+actor Transcriber {
     private var kit: WhisperKit?
     var isReady: Bool { kit != nil }
 

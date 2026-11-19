@@ -1,4 +1,5 @@
 import AppKit
+import os
 import AVFoundation
 import ApplicationServices
 import Combine
@@ -159,6 +160,30 @@ final class VocabularyStore: ObservableObject {
         guard !previewing else { return }
         if let data = try? JSONEncoder().encode(Stored(terms: terms, corrections: corrections)) {
             try? data.write(to: url, options: .atomic)
+        }
+    }
+}
+
+// MARK: - Time limits
+
+/// `work`'s result, or nil after `seconds`. Returns on time even if `work` ignores
+/// cancellation, which matters for the on-device model: if it wedges, the app must
+/// not sit in "Thinking" forever.
+func withTimeout<T: Sendable>(_ seconds: Double, _ work: @escaping @Sendable () async -> T?) async -> T? {
+    await withCheckedContinuation { (continuation: CheckedContinuation<T?, Never>) in
+        let resumed = OSAllocatedUnfairLock(initialState: false)
+        let finish: @Sendable (T?) -> Void = { value in
+            let first = resumed.withLock { done -> Bool in
+                defer { done = true }
+                return !done
+            }
+            if first { continuation.resume(returning: value) }
+        }
+        let job = Task { finish(await work()) }
+        Task {
+            try? await Task.sleep(for: .seconds(seconds))
+            job.cancel()
+            finish(nil)
         }
     }
 }

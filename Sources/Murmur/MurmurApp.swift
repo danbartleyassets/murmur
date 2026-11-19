@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import os
 
 @main
 struct MurmurApp: App {
@@ -89,6 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AppIconManager.shared.start()
             if DevHooks.runIfRequested() { return }
             AppState.shared.start()
+            MainThreadWatchdog.shared.start()
             let needsSetup = !Permissions.microphoneGranted || !Permissions.accessibilityGranted
             if !launchedAtLogin || needsSetup { WindowManager.shared.showMain() }
         }
@@ -118,13 +120,17 @@ final class WindowManager: NSObject, NSWindowDelegate {
         if let page { nav.page = page }
         if window == nil { build() }
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
-        window?.makeKeyAndOrderFront(nil)
-
-        // Changing from a menu-bar app to a regular app creates a fresh Dock tile.
-        // Reapply the system-selected icon on the next run loop after it exists.
-        DispatchQueue.main.async {
+        // The policy change lands on the next pass of the run loop; activating in
+        // the same pass can leave the window behind other apps, or off screen.
+        // Changing from a menu-bar app to a regular app also creates a fresh Dock
+        // tile, so reapply the system-selected icon once it exists.
+        DispatchQueue.main.async { [weak self] in
             AppIconManager.shared.refreshDockTile()
+            guard let window = self?.window else { return }
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            NSApp.activate()
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
         }
     }
 
@@ -149,7 +155,48 @@ final class WindowManager: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        // Back to a menu-bar-only app once the window is gone.
-        DispatchQueue.main.async { NSApp.setActivationPolicy(.accessory) }
+        // Back to a menu-bar-only app once the window is gone, and drop the window so
+        // its views stop updating in the background. It's rebuilt on the next open.
+        DispatchQueue.main.async { [weak self] in
+            NSApp.setActivationPolicy(.accessory)
+            if self?.window?.isVisible == false {
+                self?.window?.delegate = nil
+                self?.window?.contentViewController = nil
+                self?.window = nil
+            }
+        }
+    }
+}
+
+/// Logs whenever the main thread stops answering, so a freeze leaves a trace in
+/// `log show --predicate 'subsystem == "com.danbartley.murmur"'` instead of a mystery.
+final class MainThreadWatchdog: @unchecked Sendable {
+    static let shared = MainThreadWatchdog()
+    private let queue = DispatchQueue(label: "com.danbartley.murmur.watchdog", qos: .utility)
+    private let pending = OSAllocatedUnfairLock<Date?>(initialState: nil)
+    private var timer: DispatchSourceTimer?
+    private var reported = false
+
+    func start() {
+        guard timer == nil else { return }
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + 2, repeating: 2, leeway: .milliseconds(500))
+        timer.setEventHandler { [weak self] in self?.check() }
+        timer.resume()
+        self.timer = timer
+    }
+
+    private func check() {
+        if let sent = pending.withLock({ $0 }) {
+            let stalled = Date().timeIntervalSince(sent)
+            if stalled > 3, !reported {
+                reported = true
+                Log.app.fault("Main thread unresponsive for \(stalled, format: .fixed(precision: 1))s")
+            }
+            return
+        }
+        if reported { Log.app.notice("Main thread responsive again"); reported = false }
+        pending.withLock { $0 = Date() }
+        DispatchQueue.main.async { [weak self] in self?.pending.withLock { $0 = nil } }
     }
 }

@@ -23,8 +23,8 @@ enum DevHooks {
         if env["MURMUR_MICTEST"] != nil {
             let recorder = AudioRecorder()
             print("default input:", AudioDevices.defaultInput()?.name ?? "none", "| inputs:", AudioDevices.inputs().map(\.name))
-            let ok = recorder.start(deviceUID: "")
-            print("recorder.start ->", ok)
+            let ok = recorder.start(deviceUID: "", onChunk: nil)
+            print("recorder.start ->", ok, String(describing: recorder.lastFailure))
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 let r = recorder.stop()
                 print("stop -> samples \(r.samples.count), peak \(r.peak)")

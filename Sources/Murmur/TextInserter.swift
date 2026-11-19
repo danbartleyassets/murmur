@@ -55,8 +55,9 @@ struct FocusContext {
 enum TextInserter {
     enum Outcome { case inserted, copiedOnly }
 
-    static func insert(_ text: String, method: InsertionMethod, smartSpacing: Bool) -> Outcome {
-        let context = FocusContext.current()
+    static func insert(_ text: String, method: InsertionMethod, smartSpacing: Bool) async -> Outcome {
+        // Accessibility calls wait on the frontmost app; keep them off the main thread.
+        let context = await Task.detached(priority: .userInitiated) { FocusContext.current() }.value
         let final = smartSpacing ? Spacing.join(previous: context.previousCharacter, text: text) : text
         guard !final.isEmpty else { return .inserted }
 
@@ -82,17 +83,19 @@ enum TextInserter {
     /// can still be done by hand with ⌘V.
     private static let holdOnClipboard: TimeInterval = 10
     /// The clipboard from before the first of a run of dictations, waiting to go back.
-    private static var pendingRestore: (saved: [[NSPasteboard.PasteboardType: Data]], work: DispatchWorkItem)?
+    private static var pendingRestore: (saved: [[NSPasteboard.PasteboardType: Data]], ours: Int, work: DispatchWorkItem)?
 
     private static func paste(_ text: String) {
         let pb = NSPasteboard.general
         // A second dictation inside the hold window must put back the user's own
         // clipboard, not the first dictation.
+        // ...unless they've copied something themselves since, which is then theirs.
         let saved: [[NSPasteboard.PasteboardType: Data]]
-        if let pending = pendingRestore {
+        if let pending = pendingRestore, pb.changeCount == pending.ours {
             pending.work.cancel()
             saved = pending.saved
         } else {
+            pendingRestore?.work.cancel()
             saved = snapshot(pb)
         }
         setClipboard(text, transient: true)
@@ -105,7 +108,7 @@ enum TextInserter {
             guard pb.changeCount == ours else { return }
             restore(saved, to: pb)
         }
-        pendingRestore = (saved, work)
+        pendingRestore = (saved, ours, work)
         DispatchQueue.main.asyncAfter(deadline: .now() + holdOnClipboard, execute: work)
         Log.app.notice("Pasted \(text.count) characters; clipboard restores in \(Int(holdOnClipboard))s")
     }
@@ -120,11 +123,25 @@ enum TextInserter {
         }
     }
 
+    /// Only everyday types are saved. Asking for every type makes apps like Excel or
+    /// Figma render lazily offered data (often tens of MB), and stalls if that app is hung.
+    private static let restorable: [NSPasteboard.PasteboardType] = [
+        .string, .rtf, .rtfd, .html, .png, .tiff, .pdf, .fileURL, .URL,
+        NSPasteboard.PasteboardType("public.jpeg")
+    ]
+    private static let maxSnapshotBytes = 25 * 1024 * 1024
+
     private static func snapshot(_ pb: NSPasteboard) -> [[NSPasteboard.PasteboardType: Data]] {
-        (pb.pasteboardItems ?? []).map { item in
+        var total = 0
+        return (pb.pasteboardItems ?? []).compactMap { item in
             var entry: [NSPasteboard.PasteboardType: Data] = [:]
-            for type in item.types { if let data = item.data(forType: type) { entry[type] = data } }
-            return entry
+            let available = Set(item.types)
+            for type in restorable where available.contains(type) {
+                guard let data = item.data(forType: type), total + data.count <= maxSnapshotBytes else { continue }
+                entry[type] = data
+                total += data.count
+            }
+            return entry.isEmpty ? nil : entry
         }
     }
 
@@ -162,19 +179,22 @@ enum TextInserter {
     // MARK: Type (for apps that block paste)
 
     private static func type(_ text: String) {
-        let source = CGEventSource(stateID: .combinedSessionState)
-        let units = Array(text.utf16)
-        var index = 0
-        while index < units.count {
-            let end = min(index + 16, units.count)
-            var chunk = Array(units[index..<end])
+        let source = CGEventSource(stateID: .privateState)
+        // Up to 16 UTF-16 units per event, never splitting a character (emoji, accents).
+        var chunks: [[UniChar]] = [[]]
+        for character in text {
+            let units = Array(String(character).utf16)
+            if chunks[chunks.count - 1].count + units.count > 16 { chunks.append([]) }
+            chunks[chunks.count - 1].append(contentsOf: units)
+        }
+        for var chunk in chunks where !chunk.isEmpty {
             for keyDown in [true, false] {
                 if let event = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: keyDown) {
+                    event.flags = []   // a still-held Shift would otherwise ride along
                     event.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: &chunk)
                     event.post(tap: .cghidEventTap)
                 }
             }
-            index = end
         }
     }
 }

@@ -611,12 +611,12 @@ private struct DictationPage: View {
     @EnvironmentObject private var state: AppState
     @ObservedObject private var settings = SettingsStore.shared
     @ObservedObject private var history = History.shared
-    @State private var devices: [AudioInputDevice] = []
+    @ObservedObject private var audio = AudioDeviceCache.shared
 
     private var micOptions: [(String, String)] {
-        let systemName = AudioDevices.defaultInput()?.name
+        let systemName = audio.defaultInput?.name
         return [("", systemName.map { "System default (\($0))" } ?? "None connected")]
-            + devices.map { ($0.uid, $0.name) }
+            + audio.inputs.map { ($0.uid, $0.name) }
     }
 
     var body: some View {
@@ -678,8 +678,6 @@ private struct DictationPage: View {
                 .padding(.horizontal, 12)
             }
         }
-        .onAppear { devices = AudioDevices.inputs() }
-        .onChange(of: state.inputDeviceName) { _, _ in devices = AudioDevices.inputs() }
     }
 
     private var modelDetail: String {
